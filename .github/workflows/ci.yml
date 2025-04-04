@@ -47,5 +47,5 @@ jobs:
           aws-region: us-east-1
       - name: Upload to S3
         run: |
-          aws s3 sync ./dist s3://testbot.win
+          aws s3 sync ./dist/apps/testbot-app/browser s3://testbot.win
         
