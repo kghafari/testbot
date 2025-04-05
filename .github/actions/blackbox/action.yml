@@ -1,0 +1,33 @@
+name: "Blackbox Deploy"
+description: "Reusable action to deploy to S3"
+inputs:
+  env:
+    description: "Environment to deploy"
+    required: true
+    default: "dev"
+  url:
+    description: "S3 URL to deploy to"
+    required: true
+    default: "s3://dev.testbot.win"
+  version:
+    description: "Version to deploy"
+    required: true
+    default: "latest"
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
+
+    - name: Upload to S3
+      run: |
+        aws s3 sync ./dist/apps/testbot-app/browser ${{ inputs.url }}

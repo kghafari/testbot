@@ -38,7 +38,7 @@ jobs:
       #     aws-region: us-east-1
 
       - name: Upload to S3 envs
-        uses: ./.github/actions/blackbox.yml
+        uses: ./.github/actions/blackbox
         with:
           env: ${{ matrix.env_to_deploy.env }}
           url: ${{ matrix.env_to_deploy.url }}
