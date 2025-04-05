@@ -30,7 +30,7 @@ jobs:
 
       - run: npm ci --legacy-peer-deps
       - uses: nrwl/nx-set-shas@v4
-      - run: npx nx affected -t lint test build
+      - run: npx nx affected -t lint test build --skip-nx-cache
       # - uses: aws-actions/configure-aws-credentials@v4
       #   with:
       #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
