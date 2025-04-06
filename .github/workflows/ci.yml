@@ -2,10 +2,9 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-
+    tags:
+      - 'v*.*.*'
+    
 permissions:
   actions: read
   contents: read
@@ -13,11 +12,11 @@ permissions:
 jobs:
   main:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        env_to_deploy:
-          - {env: dev, url: s3://dev.testbot.win}
-          - {env: test, url: s3://testbot.win}
+    # strategy:
+    #   matrix:
+    #     env_to_deploy:
+    #       - {env: dev, url: s3://dev.testbot.win}
+    #       - {env: test, url: s3://testbot.win}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,10 +36,11 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-      - name: Upload to S3 dev
-        run: |
-          aws s3 sync ./dist/apps/testbot-app/browser s3://dev.testbot.win
-      - name: Upload to S3
-        run: |
-          aws s3 sync ./dist/apps/testbot-app/browser s3://testbot.win
+
+      # - name: Upload to S3 dev
+      #   run: |
+      #     aws s3 sync ./dist/apps/testbot-app/browser s3://dev.testbot.win
+      # - name: Upload to S3
+      #   run: |
+      #     aws s3 sync ./dist/apps/testbot-app/browser s3://testbot.win
         
