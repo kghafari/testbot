@@ -12,6 +12,10 @@ outputs:
 runs:
   using: "composite"
   steps:
+    - run: |
+          cd ${{ github.action_path }}
+          chmod +x goodbye.sh
+      shell: bash
     - name: Set Greeting
       run: echo "Hello $INPUT_WHO_TO_GREET."
       shell: bash
