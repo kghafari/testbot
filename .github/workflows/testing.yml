@@ -21,7 +21,7 @@ jobs:
         shell: bash
         env:
           RANDOM_NUMBER: ${{ steps.foo.outputs.random-number }}
-      - run: echo "${{ github.workflow.env }} /n ${{ github.ref }}"
-      - run: echo "${{ github.action.env }}"
-      - run: echo "${{ github.job.env }}"
-      - run: echo "${{ github.workflow.shas }}"
+      - run: echo ${{ github.workflow.env }}
+      - run: echo ${{ github.action.env }}
+      - run: echo ${{ github.job.env }}
+      - run: echo ${{ github.workflow.shas }}
