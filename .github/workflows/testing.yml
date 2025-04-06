@@ -16,3 +16,4 @@ jobs:
         shell: bash
         env:
           RANDOM_NUMBER: ${{ steps.foo.outputs.random-number }}
+      - run: echo "${{ toJson(github.env) }}"

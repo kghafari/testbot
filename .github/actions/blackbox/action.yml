@@ -13,6 +13,7 @@ inputs:
     description: "Version to deploy"
     required: true
     default: "latest"
+
 runs:
   using: "composite"
   steps:
