@@ -48,12 +48,6 @@
           "outputHashing": "all"
         },
         "development": {
-          "buildOptimizer": false,
-          "optimization": false,
-          "vendorChunk": true,
-          "extractLicenses": false,
-          "sourceMap": true,
-          "namedChunks": true,
           "fileReplacements": [
             {
               "replace": "apps/testbot-app/src/environments/environment.ts",
