@@ -1,7 +1,7 @@
 import { Environment } from './environment.model';
 
 export const environment: Environment = {
-  testValue: 'prodServer!',
-  environmentName: 'production',
+  testValue: 'base env!',
+  environmentName: 'base',
   production: true,
 };

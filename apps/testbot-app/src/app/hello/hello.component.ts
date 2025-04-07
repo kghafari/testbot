@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { environment } from '../../environments/environment.development';
+import { environment } from '../../environments/environment';
 
 @Component({
   selector: 'app-hello',
@@ -10,4 +10,5 @@ import { environment } from '../../environments/environment.development';
 })
 export class HelloComponent {
   testData = environment.testValue;
+  env = environment.environmentName;
 }
