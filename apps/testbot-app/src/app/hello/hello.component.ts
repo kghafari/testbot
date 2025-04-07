@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { environment } from '../../environments/environment.development';
 
 @Component({
   selector: 'app-hello',
@@ -7,4 +8,6 @@ import { CommonModule } from '@angular/common';
   templateUrl: './hello.component.html',
   styleUrl: './hello.component.scss',
 })
-export class HelloComponent {}
+export class HelloComponent {
+  testData = environment.testValue;
+}

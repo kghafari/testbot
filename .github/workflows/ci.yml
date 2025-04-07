@@ -4,43 +4,56 @@ on:
   push:
     tags:
       - 'v*.*.*'
-    
+
 permissions:
   actions: read
   contents: read
 
 jobs:
-  main:
+  dev:
+    environment: dev
     runs-on: ubuntu-latest
-    # strategy:
-    #   matrix:
-    #     env_to_deploy:
-    #       - {env: dev, url: s3://dev.testbot.win}
-    #       - {env: test, url: s3://testbot.win}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # Cache node_modules
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
-
       - run: npm ci --legacy-peer-deps
       - uses: nrwl/nx-set-shas@v4
-      - run: npx nx affected -t lint test build --skip-nx-cache
+      - run: npx nx affected -t lint test build --configuration=development --skip-nx-cache
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-
-      # - name: Upload to S3 dev
-      #   run: |
-      #     aws s3 sync ./dist/apps/testbot-app/browser s3://dev.testbot.win
-      # - name: Upload to S3
-      #   run: |
-      #     aws s3 sync ./dist/apps/testbot-app/browser s3://testbot.win
-        
+      - name: Upload to S3 dev
+        run: |
+          aws s3 sync ./dist/apps/testbot-app/browser s3://dev.testbot.win
+  prod:
+    environment: prod
+    runs-on: ubuntu-latest
+    needs: dev
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+      - run: npm ci --legacy-peer-deps
+      - uses: nrwl/nx-set-shas@v4
+      - run: npx nx affected -t lint test build --configuration=development --skip-nx-cache
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Upload to S3 dev
+        run: |
+          aws s3 sync ./dist/apps/testbot-app/browser s3://dev.testbot.win
