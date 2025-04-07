@@ -30,7 +30,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-      - name: Upload to S3 dev
+      - name: Upload to S3 Dev
         run: |
           aws s3 sync ./dist/apps/testbot-app/browser s3://dev.testbot.win
   prod:
@@ -47,13 +47,13 @@ jobs:
           cache: 'npm'
       - run: npm ci --legacy-peer-deps
       - uses: nrwl/nx-set-shas@v4
-      - run: npx nx affected -t lint test build --configuration=development --skip-nx-cache
+      - run: npx nx affected -t lint test build --configuration=production --skip-nx-cache
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-      - name: Upload to S3 dev
+      - name: Upload to S3 Prod
         run: |
-          aws s3 sync ./dist/apps/testbot-app/browser s3://dev.testbot.win
+          aws s3 sync ./dist/apps/testbot-app/browser s3://testbot.win
