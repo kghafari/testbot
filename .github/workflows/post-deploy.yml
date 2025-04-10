@@ -69,8 +69,10 @@ jobs:
           COMMIT_LIST=$(git log --oneline --no-merges $LAST_PROD_TAG..$BETA_SHA)
 
           # Create a changelog based on the commit list
-          RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA\n\n"
-          RELEASE_NOTES+="$COMMIT_LIST"
+          RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA"
+          RELEASE_NOTES+="$BETA_SHA
+
+          $COMMIT_LIST"
 
           # Save the release notes to a file for use in the release creation/update
           echo "$RELEASE_NOTES" > release_notes.md
@@ -150,7 +152,6 @@ jobs:
           NEW_TAG_N_TITLE=$(date +'%Y%m%d-%H%M%S')
 
           # Rename the release to include the deployment URL
-          gh release edit "$RELEASE_URL" --title "Release $RELEASE_URL"
           gh release edit "$DRAFT_TAG" --draft=false --title "$NEW_TAG_N_TITLE" --tag "$NEW_TAG_N_TITLE"
       # this step is fucked up cause we're using NEW_TAG='v-next' and not the actual tag name
       # - name: Generate Release Tag and Title
