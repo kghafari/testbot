@@ -1,0 +1,16 @@
+name: Post Deployment Check
+
+on:
+  deployment_status:
+
+jobs:
+  run-on-deploy-success:
+    if: >
+      github.event.deployment.environment == 'dev' &&
+      github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Confirm triggered by dev
+        run: |
+          echo "✅ Dev deployment succeeded!"
+          echo "Commit: ${{ github.event.deployment.sha }}"
