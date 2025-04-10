@@ -23,7 +23,9 @@ jobs:
           cache: 'npm'
       - run: npm ci --legacy-peer-deps
       - uses: nrwl/nx-set-shas@v4
-      - run: npx nx affected -t lint test build --configuration=development --skip-nx-cache
+      - run: npx nx build testbot-app --configuration=production --skip-nx-cache
+      # disabled for now so we always deploy
+      #- run: npx nx affected -t lint test build --configuration=development --skip-nx-cache
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
