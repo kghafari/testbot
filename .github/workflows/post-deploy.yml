@@ -59,17 +59,37 @@ jobs:
 
           echo "📌 Generating release notes from $LAST_PROD_TAG to $BETA_SHA"
 
-          # Generate the commit list from prod to beta (excluding the prod commit itself)
-          COMMIT_LIST=$(git log --oneline --no-merges --ancestry-path $LAST_PROD_TAG..$BETA_SHA)
+          # Get list of commits between prod and beta (ancestry path for clean history)
+          COMMITS=$(git log --pretty=format:"%H" --no-merges --first-parent --ancestry-path "$LAST_PROD_TAG..$BETA_SHA")
 
-          # Create a changelog based on the commit list
-          RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA\n"
-          RELEASE_NOTES+="$BETA_SHA"
-          RELEASE_NOTES+="$COMMIT_LIST"
+          echo "🔍 Found commits:"
+          echo "$COMMITS"
 
-          # Save the release notes to a file for use in the release creation/update
+          # Initialize PR-based changelog
+          RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA\n\n"
+
+          for COMMIT in $COMMITS; do
+            echo "🔎 Checking PR for commit $COMMIT"
+
+            # Get associated PR (if any)
+            PR_JSON=$(gh pr list --search "$COMMIT" --state merged --json number,title,author --limit 1)
+
+            if [[ $(echo "$PR_JSON" | jq length) -gt 0 ]]; then
+              PR_NUM=$(echo "$PR_JSON" | jq -r '.[0].number')
+              PR_TITLE=$(echo "$PR_JSON" | jq -r '.[0].title')
+              PR_AUTHOR=$(echo "$PR_JSON" | jq -r '.[0].author.login')
+
+              RELEASE_NOTES+="- [#${PR_NUM}](https://github.com/${{ github.repository }}/pull/${PR_NUM}): ${PR_TITLE} (by @${PR_AUTHOR})\n"
+            else
+              COMMIT_MSG=$(git log -1 --pretty=format:"%s" "$COMMIT")
+              SHORT_SHA=$(echo "$COMMIT" | cut -c1-7)
+
+              RELEASE_NOTES+="- ${SHORT_SHA}: ${COMMIT_MSG}\n"
+            fi
+          done
+
           echo -e "$RELEASE_NOTES" > release_notes.md
-          echo "Generated release notes:"
+          echo "📝 Generated release notes:"
           cat release_notes.md
 
       - name: Create or Update Draft Release
