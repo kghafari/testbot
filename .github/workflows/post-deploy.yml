@@ -19,12 +19,6 @@ jobs:
       github.event.deployment_status.state == 'success'
 
     steps:
-      # - name: Echo Some Stuff
-      #   run: |
-      #     echo "Triggered workflow on ENV - ${{ github.event.deployment.environment }}"
-      #     echo "Deployment state - ${{ github.event.deployment_status.state }}"
-      #     echo "Commit: ${{ github.event.deployment.sha }}"
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -70,9 +64,8 @@ jobs:
 
           # Create a changelog based on the commit list
           RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA"
-          RELEASE_NOTES+="$BETA_SHA
-
-          $COMMIT_LIST"
+          RELEASE_NOTES+="$$BETA_SHA"
+          RELEASE_NOTES+="$COMMIT_LIST"
 
           # Save the release notes to a file for use in the release creation/update
           echo "$RELEASE_NOTES" > release_notes.md
@@ -153,23 +146,3 @@ jobs:
 
           # Rename the release to include the deployment URL
           gh release edit "$DRAFT_TAG" --draft=false --title "$NEW_TAG_N_TITLE" --tag "$NEW_TAG_N_TITLE"
-      # this step is fucked up cause we're using NEW_TAG='v-next' and not the actual tag name
-      # - name: Generate Release Tag and Title
-      #   id: generate_unique_identifier
-      #   run: |
-      #     # Generate a unique tag and title using date and time
-      #     UNIQUE_IDENTIFIER=$(date +'%Y%m%d-%H%M%S')
-      #     NEW_TAG="release-${UNIQUE_IDENTIFIER}"
-      #     RELEASE_TITLE="Release ${UNIQUE_IDENTIFIER}"
-      #     echo "::set-output name=new_tag::$NEW_TAG"
-      #     echo "::set-output name=release_title::$RELEASE_TITLE"
-
-      # - name: Publish Draft Release with Unique Tag and Title
-      #   id: publish_release
-      #   run: |
-      #     # Get the unique tag and title from previous step
-      #     NEW_TAG="${{ steps.generate_unique_identifier.outputs.new_tag }}"
-      #     RELEASE_TITLE="${{ steps.generate_unique_identifier.outputs.release_title }}"
-
-      #     # Publish the draft release and update the tag and title
-      #     gh release edit "$NEW_TAG" --draft=false --title "$RELEASE_TITLE" --tag "$NEW_TAG"
