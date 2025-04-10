@@ -106,7 +106,6 @@ jobs:
 
   publish-prod-release:
     runs-on: ubuntu-latest
-    needs: generate-release-sha-diff
     if: >
       github.event.deployment.environment == 'prod' &&
       github.event.deployment_status.state == 'success'
