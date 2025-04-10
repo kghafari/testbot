@@ -3,6 +3,12 @@ name: 🔍Post Deployment Check
 on:
   deployment_status:
 # setting GH_TOKEN for the entire workflow
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+permissions:
+  contents: write # Allows for creating/editing releases
+  deployments: write # If you're using deployment tracking as well
+  pull-requests: read # If working with PR data
 
 jobs:
   generate-release-sha-diff:
@@ -10,12 +16,7 @@ jobs:
     if: >
       github.event.deployment.environment == 'dev' &&
       github.event.deployment_status.state == 'success'
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    permissions:
-      contents: write # Allows for creating/editing releases
-      deployments: write # If you're using deployment tracking as well
-      pull-requests: read # If working with PR data
+
     steps:
       - name: Echo Some Stuff
         run: |
@@ -102,3 +103,59 @@ jobs:
               --draft \
               --notes-file "$RELEASE_NOTES_FILE"
           fi
+
+  publish-prod-release:
+    runs-on: ubuntu-latest
+    needs: generate-release-sha-diff
+    if: >
+      github.event.deployment.environment == 'prod' &&
+      github.event.deployment_status.state == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find the Draft Release for prod
+        id: find_draft_release
+        run: |
+          NEW_TAG="v-next"
+          RELEASE=$(gh release view "$NEW_TAG" --json tagName,isDraft,body,url)
+          echo "Release: $RELEASE"
+          echo "::set-output name=release_url::$(echo "$RELEASE" | jq -r '.url')"
+          echo "::set-output name=release_body::$(echo "$RELEASE" | jq -r '.body')"
+
+      - name: Add Deployment Link to Release Notes
+        id: update_release_notes
+        run: |
+          # Get the link to the deployment workflow run
+          DEPLOYMENT_URL="${{ github.event.deployment_url }}"
+          RELEASE_BODY="${{ steps.find_draft_release.outputs.release_body }}"
+
+          # Add deployment link to the notes
+          UPDATED_BODY="$RELEASE_BODY\n\nDeployment URL: $DEPLOYMENT_URL"
+          echo "$UPDATED_BODY" > updated_notes.md
+
+          # Update the draft release with the new notes
+          NEW_TAG="v-next"
+          gh release edit "$NEW_TAG" --draft --notes-file updated_notes.md
+
+      - name: Generate Unique Tag and Title
+        id: generate_unique_identifier
+        run: |
+          # Generate a unique tag and title using date and time
+          UNIQUE_IDENTIFIER=$(date +'%Y%m%d-%H%M%S')
+          NEW_TAG="release-${UNIQUE_IDENTIFIER}"
+          RELEASE_TITLE="Release ${UNIQUE_IDENTIFIER}"
+          echo "::set-output name=new_tag::$NEW_TAG"
+          echo "::set-output name=release_title::$RELEASE_TITLE"
+
+      - name: Publish Draft Release with Unique Tag and Title
+        id: publish_release
+        run: |
+          # Get the unique tag and title from previous step
+          NEW_TAG="${{ steps.generate_unique_identifier.outputs.new_tag }}"
+          RELEASE_TITLE="${{ steps.generate_unique_identifier.outputs.release_title }}"
+
+          # Publish the draft release and update the tag and title
+          gh release edit "$NEW_TAG" --draft=false --title "$RELEASE_TITLE" --tag "$NEW_TAG"
