@@ -1,4 +1,4 @@
-name: CI
+name: ✅ Main Deployment Workflow
 
 on:
   push:

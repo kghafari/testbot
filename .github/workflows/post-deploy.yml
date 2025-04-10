@@ -1,4 +1,4 @@
-name: Post Deployment Check
+name: 🔍Post Deployment Check
 
 on:
   deployment_status:
@@ -50,3 +50,46 @@ jobs:
         run: |
           echo "🟢 Last prod release: ${{ steps.last_prod_tag.outputs.tag }} -> ${{ steps.prod_sha.outputs.sha }}"
           echo "🟡 Current beta SHA: ${{ steps.beta_sha.outputs.sha }}"
+      - name: Create or Update Draft Release
+        id: create_draft
+        # env:
+        #   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Inputs
+          BETA_SHA=${{ steps.beta_sha.outputs.sha }}
+          LAST_PROD_TAG=${{ steps.last_prod_tag.outputs.tag }}
+          NEW_TAG="v-next"
+
+          echo "📌 Generating draft release notes from $LAST_PROD_TAG to $BETA_SHA"
+
+          # Check if a draft release already exists for this tag
+          EXISTS=$(gh release list --limit 10 --json tagName,isDraft --jq '.[] | select(.tagName == "'$NEW_TAG'" and .isDraft == true)')
+
+          if [[ -n "$EXISTS" ]]; then
+            echo "✏️ Draft release for $NEW_TAG already exists. Updating notes..."
+            NOTES=$(gh release view "$NEW_TAG" --json body --jq '.body')
+            GENERATED=$(gh release --repo "$GITHUB_REPOSITORY" \
+              --generate-notes \
+              --target "$BETA_SHA" \
+              --notes-start-tag "$LAST_PROD_TAG" \
+              --prerelease \
+              --draft \
+              --title "Release $NEW_TAG" \
+              --notes "" \
+              --json body \
+              --jq '.body')
+            
+            # Merge existing + new notes (naive append)
+            echo "$NOTES" > updated-notes.md
+            echo -e "\n\n# Updates\n$GENERATED" >> updated-notes.md
+
+            gh release edit "$NEW_TAG" --draft --notes-file updated-notes.md
+          else
+            echo "🆕 Creating new draft release $NEW_TAG"
+            gh release create "$NEW_TAG" \
+              --target "$BETA_SHA" \
+              --title "Release $NEW_TAG" \
+              --draft \
+              --generate-notes \
+              --notes-start-tag "$LAST_PROD_TAG"
+          fi
