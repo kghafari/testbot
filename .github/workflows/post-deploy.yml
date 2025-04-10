@@ -10,10 +10,12 @@ jobs:
     if: >
       github.event.deployment.environment == 'dev' &&
       github.event.deployment_status.state == 'success'
-
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+    permissions:
+      contents: write # Allows for creating/editing releases
+      deployments: write # If you're using deployment tracking as well
+      pull-requests: read # If working with PR data
     steps:
       - name: Echo Some Stuff
         run: |
