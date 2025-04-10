@@ -2,6 +2,7 @@ name: Post Deployment Check
 
 on:
   deployment_status:
+# setting GH_TOKEN for the entire workflow
 
 jobs:
   generate-release-sha-diff:
@@ -9,6 +10,9 @@ jobs:
     if: >
       github.event.deployment.environment == 'dev' &&
       github.event.deployment_status.state == 'success'
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Echo Some Stuff
