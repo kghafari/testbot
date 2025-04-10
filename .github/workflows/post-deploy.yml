@@ -60,7 +60,7 @@ jobs:
           echo "📌 Generating release notes from $LAST_PROD_TAG to $BETA_SHA"
 
           # Generate the commit list from prod to beta (excluding the prod commit itself)
-          COMMIT_LIST=$(git log --oneline --no-merges $LAST_PROD_TAG..$BETA_SHA)
+          COMMIT_LIST=$(git log --oneline --no-merges --ancestry-path $LAST_PROD_TAG..$BETA_SHA)
 
           # Create a changelog based on the commit list
           RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA\n"
@@ -99,6 +99,12 @@ jobs:
               --draft \
               --notes-file "$RELEASE_NOTES_FILE"
           fi
+      - name: do some outputs
+        run: |
+          echo "beta_sha output: ${{ steps.beta_sha.outputs.sha }}"
+          echo "last_prod_tag output: ${{ steps.last_prod_tag.outputs.tag }}"
+          echo "prod_sha output: ${{ steps.prod_sha.outputs.sha }}"
+          echo "Release Notes: ${{ steps.create_draft.outputs.release_body }}"
 
   publish-prod-release:
     runs-on: ubuntu-latest
