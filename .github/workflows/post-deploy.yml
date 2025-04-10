@@ -52,46 +52,53 @@ jobs:
         run: |
           echo "🟢 Last prod release: ${{ steps.last_prod_tag.outputs.tag }} -> ${{ steps.prod_sha.outputs.sha }}"
           echo "🟡 Current beta SHA: ${{ steps.beta_sha.outputs.sha }}"
+
+      - name: Generate and Append Release Notes
+        id: generate_release_notes
+        run: |
+          # Inputs
+          LAST_PROD_TAG=${{ steps.last_prod_tag.outputs.tag }}
+          BETA_SHA=${{ steps.beta_sha.outputs.sha }}
+          NEW_TAG="v-next"
+
+          echo "📌 Generating release notes from $LAST_PROD_TAG to $BETA_SHA"
+
+          # Generate the commit list from prod to beta (excluding the prod commit itself)
+          COMMIT_LIST=$(git log --oneline --no-merges $LAST_PROD_TAG..$BETA_SHA)
+
+          # Create a changelog based on the commit list
+          RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA\n\n"
+          RELEASE_NOTES+="$COMMIT_LIST"
+
+          # Save the release notes to a file for use in the release creation/update
+          echo "$RELEASE_NOTES" > release_notes.md
+          echo "Generated release notes:"
+          cat release_notes.md
+
       - name: Create or Update Draft Release
         id: create_draft
-        # env:
-        #   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Inputs
           BETA_SHA=${{ steps.beta_sha.outputs.sha }}
           LAST_PROD_TAG=${{ steps.last_prod_tag.outputs.tag }}
           NEW_TAG="v-next"
-
-          echo "📌 Generating draft release notes from $LAST_PROD_TAG to $BETA_SHA"
+          RELEASE_NOTES_FILE="release_notes.md"
 
           # Check if a draft release already exists for this tag
           EXISTS=$(gh release list --limit 10 --json tagName,isDraft --jq '.[] | select(.tagName == "'$NEW_TAG'" and .isDraft == true)')
 
           if [[ -n "$EXISTS" ]]; then
             echo "✏️ Draft release for $NEW_TAG already exists. Updating notes..."
-            NOTES=$(gh release view "$NEW_TAG" --json body --jq '.body')
-            GENERATED=$(gh release --repo "$GITHUB_REPOSITORY" \
-              --generate-notes \
-              --target "$BETA_SHA" \
-              --notes-start-tag "$LAST_PROD_TAG" \
-              --prerelease \
-              --draft \
-              --title "Release $NEW_TAG" \
-              --notes "" \
-              --json body \
-              --jq '.body')
             
-            # Merge existing + new notes (naive append)
-            echo "$NOTES" > updated-notes.md
-            echo -e "\n\n# Updates\n$GENERATED" >> updated-notes.md
-
-            gh release edit "$NEW_TAG" --draft --notes-file updated-notes.md
+            # Update the existing draft release with the new notes
+            gh release edit "$NEW_TAG" --draft --notes-file "$RELEASE_NOTES_FILE"
           else
             echo "🆕 Creating new draft release $NEW_TAG"
+            
+            # Create a new draft release with the generated notes
             gh release create "$NEW_TAG" \
               --target "$BETA_SHA" \
               --title "Release $NEW_TAG" \
               --draft \
-              --generate-notes \
-              --notes-start-tag "$LAST_PROD_TAG"
+              --notes-file "$RELEASE_NOTES_FILE"
           fi
