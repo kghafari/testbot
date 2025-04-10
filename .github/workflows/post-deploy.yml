@@ -60,7 +60,7 @@ jobs:
           echo "📌 Generating release notes from $LAST_PROD_TAG to $BETA_SHA"
 
           # Get list of commits between prod and beta (ancestry path for clean history)
-          COMMITS=$(git log --pretty=format:"%H" --no-merges --first-parent --ancestry-path "$LAST_PROD_TAG..$BETA_SHA")
+          COMMITS=$(git log --pretty=format:"%H" --first-parent --ancestry-path "$LAST_PROD_TAG..$BETA_SHA")
 
           echo "🔍 Found commits:"
           echo "$COMMITS"
