@@ -4,15 +4,45 @@ on:
   deployment_status:
 
 jobs:
-  run-on-deploy-success:
-    # if: >
-    #   github.event.deployment.environment == 'dev' &&
-    #   github.event.deployment_status.state == 'success'
+  generate-release-sha-diff:
     runs-on: ubuntu-latest
+    if: >
+      github.event.deployment.environment == 'dev' &&
+      github.event.deployment_status.state == 'success'
+
     steps:
-      - name: Confirm triggered by dev
+      - name: Echo Some Stuff
         run: |
           echo "Triggered workflow on ENV - ${{ github.event.deployment.environment }}"
           echo "Deployment state - ${{ github.event.deployment_status.state }}"
-          echo "✅ Dev deployment succeeded!"
           echo "Commit: ${{ github.event.deployment.sha }}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current beta SHA
+        id: beta_sha
+        run: |
+          echo "sha=${{ github.event.deployment.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Get last prod release tag
+        id: last_prod_tag
+        run: |
+          # Get the latest published (non-draft) release tag
+          tag=$(gh release list --json name,isLatest --jq '.[] | select(.isLatest)|.name')
+          echo "tag=$tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve tag to SHA
+        id: prod_sha
+        run: |
+          sha=$(git rev-list -n 1 ${{ steps.last_prod_tag.outputs.tag }})
+          echo "sha=$sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Display info (optional)
+        run: |
+          echo "🟢 Last prod release: ${{ steps.last_prod_tag.outputs.tag }} -> ${{ steps.prod_sha.outputs.sha }}"
+          echo "🟡 Current beta SHA: ${{ steps.beta_sha.outputs.sha }}"
