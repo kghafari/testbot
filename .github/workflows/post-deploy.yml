@@ -5,12 +5,14 @@ on:
 
 jobs:
   run-on-deploy-success:
-    if: >
-      github.event.deployment.environment == 'dev' &&
-      github.event.deployment_status.state == 'success'
+    # if: >
+    #   github.event.deployment.environment == 'dev' &&
+    #   github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Confirm triggered by dev
         run: |
+          echo "Triggered workflow on ENV - ${{ github.event.deployment.environment }}"
+          echo "Deployment state - ${{ github.event.deployment_status.state }}"
           echo "✅ Dev deployment succeeded!"
           echo "Commit: ${{ github.event.deployment.sha }}"
