@@ -2,6 +2,7 @@ name: 🔍Post Deployment Check
 
 on:
   deployment_status:
+
 # setting GH_TOKEN for the entire workflow
 env:
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -18,11 +19,11 @@ jobs:
       github.event.deployment_status.state == 'success'
 
     steps:
-      - name: Echo Some Stuff
-        run: |
-          echo "Triggered workflow on ENV - ${{ github.event.deployment.environment }}"
-          echo "Deployment state - ${{ github.event.deployment_status.state }}"
-          echo "Commit: ${{ github.event.deployment.sha }}"
+      # - name: Echo Some Stuff
+      #   run: |
+      #     echo "Triggered workflow on ENV - ${{ github.event.deployment.environment }}"
+      #     echo "Deployment state - ${{ github.event.deployment_status.state }}"
+      #     echo "Commit: ${{ github.event.deployment.sha }}"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -118,43 +119,56 @@ jobs:
       - name: Find the Draft Release for prod
         id: find_draft_release
         run: |
-          NEW_TAG="v-next"
-          RELEASE=$(gh release view "$NEW_TAG" --json tagName,isDraft,body,url)
+          DRAFT_TAG="v-next"
+          RELEASE=$(gh release view "$DRAFT_TAG" --json tagName,isDraft,body,url)
           echo "Release: $RELEASE"
+          echo "::set-output name=tag_name::$(echo "$RELEASE" | jq -r '.tagName')"
           echo "::set-output name=release_url::$(echo "$RELEASE" | jq -r '.url')"
           echo "::set-output name=release_body::$(echo "$RELEASE" | jq -r '.body')"
 
-      - name: Add Deployment Link to Release Notes
-        id: update_release_notes
+      # - name: Add Deployment Link to Release Notes
+      #   id: update_release_notes
+      #   run: |
+      #     # Get the link to the deployment workflow run
+      #     DEPLOYMENT_URL="${{ github.event.deployment_url }}"
+      #     RELEASE_BODY="${{ steps.find_draft_release.outputs.release_body }}"
+
+      #     # Add deployment link to the notes
+      #     UPDATED_BODY="${RELEASE_BODY}
+
+      #     Deployment URL: $DEPLOYMENT_URL"
+
+      #     # Update the draft release with the new notes
+      #     NEW_TAG="v-next"
+      #     gh release edit "$NEW_TAG" --draft --notes-file updated_notes.md
+
+      - name: Rename Release
+        id: rename_release
         run: |
-          # Get the link to the deployment workflow run
-          DEPLOYMENT_URL="${{ github.event.deployment_url }}"
-          RELEASE_BODY="${{ steps.find_draft_release.outputs.release_body }}"
+          # Get the tag 
+          DRAFT_TAG="${{ steps.find_draft_release.outputs.tag_name }}"
+          NEW_TAG_N_TITLE=$(date +'%Y%m%d-%H%M%S')
 
-          # Add deployment link to the notes
-          UPDATED_BODY="$RELEASE_BODY\n\nDeployment URL: $DEPLOYMENT_URL"
-          echo "$UPDATED_BODY" > updated_notes.md
+          # Rename the release to include the deployment URL
+          gh release edit "$RELEASE_URL" --title "Release $RELEASE_URL"
+          gh release edit "$DRAFT_TAG" --draft=false --title "$NEW_TAG_N_TITLE" --tag "$NEW_TAG_N_TITLE"
+      # this step is fucked up cause we're using NEW_TAG='v-next' and not the actual tag name
+      # - name: Generate Release Tag and Title
+      #   id: generate_unique_identifier
+      #   run: |
+      #     # Generate a unique tag and title using date and time
+      #     UNIQUE_IDENTIFIER=$(date +'%Y%m%d-%H%M%S')
+      #     NEW_TAG="release-${UNIQUE_IDENTIFIER}"
+      #     RELEASE_TITLE="Release ${UNIQUE_IDENTIFIER}"
+      #     echo "::set-output name=new_tag::$NEW_TAG"
+      #     echo "::set-output name=release_title::$RELEASE_TITLE"
 
-          # Update the draft release with the new notes
-          NEW_TAG="v-next"
-          gh release edit "$NEW_TAG" --draft --notes-file updated_notes.md
+      # - name: Publish Draft Release with Unique Tag and Title
+      #   id: publish_release
+      #   run: |
+      #     # Get the unique tag and title from previous step
+      #     NEW_TAG="${{ steps.generate_unique_identifier.outputs.new_tag }}"
+      #     RELEASE_TITLE="${{ steps.generate_unique_identifier.outputs.release_title }}"
 
-      - name: Generate Unique Tag and Title
-        id: generate_unique_identifier
-        run: |
-          # Generate a unique tag and title using date and time
-          UNIQUE_IDENTIFIER=$(date +'%Y%m%d-%H%M%S')
-          NEW_TAG="release-${UNIQUE_IDENTIFIER}"
-          RELEASE_TITLE="Release ${UNIQUE_IDENTIFIER}"
-          echo "::set-output name=new_tag::$NEW_TAG"
-          echo "::set-output name=release_title::$RELEASE_TITLE"
-
-      - name: Publish Draft Release with Unique Tag and Title
-        id: publish_release
-        run: |
-          # Get the unique tag and title from previous step
-          NEW_TAG="${{ steps.generate_unique_identifier.outputs.new_tag }}"
-          RELEASE_TITLE="${{ steps.generate_unique_identifier.outputs.release_title }}"
-
-          # Publish the draft release and update the tag and title
-          gh release edit "$NEW_TAG" --draft=false --title "$RELEASE_TITLE" --tag "$NEW_TAG"
+      #     # Publish the draft release and update the tag and title
+      #     gh release edit "$NEW_TAG" --draft=false --title "$RELEASE_TITLE" --tag "$NEW_TAG"
