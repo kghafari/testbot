@@ -63,12 +63,12 @@ jobs:
           COMMIT_LIST=$(git log --oneline --no-merges $LAST_PROD_TAG..$BETA_SHA)
 
           # Create a changelog based on the commit list
-          RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA"
-          RELEASE_NOTES+="$$BETA_SHA"
+          RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA\n"
+          RELEASE_NOTES+="$BETA_SHA"
           RELEASE_NOTES+="$COMMIT_LIST"
 
           # Save the release notes to a file for use in the release creation/update
-          echo "$RELEASE_NOTES" > release_notes.md
+          echo -e "$RELEASE_NOTES" > release_notes.md
           echo "Generated release notes:"
           cat release_notes.md
 
