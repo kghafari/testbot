@@ -93,6 +93,7 @@ jobs:
           NEW_TAG="v-next"
 
           echo "📌 Generating release notes from $LAST_PROD_TAG to $BETA_SHA"
+          RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA\n\n"
 
           for COMMIT in "${COMMITS[@]}"; do
             echo "🔎 Checking PR for commit $COMMIT"
@@ -110,9 +111,6 @@ jobs:
               RELEASE_NOTES+="- ${SHORT_SHA}: ${COMMIT_MSG}\n"
             fi
           done
-
-          RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA\n\n"
-          RELEASE_NOTES+="${{ steps.commit_diffs.outputs.commits }}"
 
           echo -e "$RELEASE_NOTES" > release_notes.md
           echo "📝 Generated release notes:"
