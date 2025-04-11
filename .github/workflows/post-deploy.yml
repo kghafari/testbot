@@ -156,36 +156,33 @@ jobs:
       - name: Get last deployed beta SHA
         id: last_beta_deploy
         run: |
-          # GETS LAST SUCCESSFUL BETA DEPLOY SHA
-          # Get the last 10 deployments to the 'dev' environment
           deployments=$(gh api \
-          -H "Accept: application/vnd.github+json" \
-          "repos/kghafari/testbot/deployments?environment=dev&per_page=10")
+            -H "Accept: application/vnd.github+json" \
+            "repos/kghafari/testbot/deployments?environment=dev&per_page=10")
 
           # Extract deployment IDs and SHAs
           deploy_info=$(echo "$deployments" | jq -c '.[] | {id: .id, sha: .sha}')
 
           # Loop through each deployment to check status
           while IFS= read -r deployment; do
-          id=$(echo "$deployment" | jq -r '.id')
-          sha=$(echo "$deployment" | jq -r '.sha')
+            id=$(echo "$deployment" | jq -r '.id')
+            sha=$(echo "$deployment" | jq -r '.sha')
 
-          # Get statuses for the deployment
-          statuses=$(gh api \
-            -H "Accept: application/vnd.github+json" \
-            "repos/kghafari/testbot/deployments/$id/statuses")
+            # Get statuses for the deployment
+            statuses=$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              "repos/kghafari/testbot/deployments/$id/statuses")
 
-          # Check for success state
-          success=$(echo "$statuses" | jq -e '.[] | select(.state == "success")' > /dev/null && echo "yes" || echo "no")
+            # Check for success state
+            success=$(echo "$statuses" | jq -e '.[] | select(.state == "success")' > /dev/null && echo "yes" || echo "no")
 
-          if [ "$success" == "yes" ]; then
-            echo "✅ Successful deployment found!"
-            echo "SHA: $sha"
-            break
-          fi
-          done
+            if [ "$success" == "yes" ]; then
+              echo "✅ Successful deployment found!"
+              break
+            fi
+          done <<< "$(echo "$deploy_info")"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "last beta sha=$sha"
+          echo "sha=$sha"
 
       - name: Compare SHA diff
         id: compare_sha_diff
@@ -198,6 +195,37 @@ jobs:
           echo "EOF" >> "$GITHUB_OUTPUT"
 
           echo "✅ Found commits: $commits"
+
+      - name: 📝Regenerate and Append Release Notes
+        run: |
+          COMMITS=(${{ steps.compare_sha_diff.outputs.commits }})
+          NEW_TAG="v-next"
+
+          #echo "📌 Generating release notes from $LAST_PROD_TAG to $BETA_SHA"
+          RELEASE_NOTES="# Changelog\n\n"
+
+          for COMMIT in "${COMMITS[@]}"; do
+            echo "🔎 Checking PR for commit $COMMIT"
+
+            PR_JSON=$(gh pr list --search "$COMMIT" --state merged --json number,title,author --limit 1)
+
+            if [[ $(echo "$PR_JSON" | jq length) -gt 0 ]]; then
+              PR_NUM=$(echo "$PR_JSON" | jq -r '.[0].number')
+              PR_TITLE=$(echo "$PR_JSON" | jq -r '.[0].title')
+              PR_AUTHOR=$(echo "$PR_JSON" | jq -r '.[0].author.login')
+              RELEASE_NOTES+="- [#${PR_NUM}](https://github.com/${{ github.repository }}/pull/${PR_NUM}): ${PR_TITLE} (by @${PR_AUTHOR})\n"
+            else
+              COMMIT_MSG=$(git log -1 --pretty=format:"%s" "$COMMIT")
+              SHORT_SHA=$(echo "$COMMIT" | cut -c1-7)
+              RELEASE_NOTES+="- ${SHORT_SHA}: ${COMMIT_MSG}\n"
+            fi
+          done
+
+          echo -e "$RELEASE_NOTES" > release_notes.md
+          echo "📝 Generated release notes:"
+          cat release_notes.md
+
+        # INSERT CODE HERE
 
       - name: Publish Release
         id: publish_release
