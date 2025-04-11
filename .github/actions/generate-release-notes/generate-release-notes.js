@@ -4,7 +4,6 @@ exports.runHelloWorld = runHelloWorld;
 const tslib_1 = require("tslib");
 const core = tslib_1.__importStar(require("@actions/core"));
 const action_1 = require("@octokit/action");
-
 function runHelloWorld() {
     return tslib_1.__awaiter(this, void 0, void 0, function* () {
         try {
@@ -18,12 +17,12 @@ function runHelloWorld() {
                 title: 'My test issue',
             });
             console.log('Issue created: %s', data.html_url);
-        } catch (error) {
+        }
+        catch (error) {
             core.error('❌ An error occurred:');
             core.error(error.message);
             core.setFailed(error.message);
         }
     });
 }
-
-runHelloWorld();
+//# sourceMappingURL=generate-release-notes.js.map

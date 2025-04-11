@@ -90,3 +90,5 @@ jobs:
 
       - name: Run local action
         uses: ./.github/actions/generate-release-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
