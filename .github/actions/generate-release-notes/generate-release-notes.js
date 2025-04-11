@@ -25,4 +25,5 @@ function runHelloWorld() {
         }
     });
 }
+runHelloWorld();
 //# sourceMappingURL=generate-release-notes.js.map

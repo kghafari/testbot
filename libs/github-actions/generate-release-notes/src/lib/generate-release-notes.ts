@@ -23,3 +23,5 @@ export async function runHelloWorld() {
     core.setFailed(error.message);
   }
 }
+
+runHelloWorld();
