@@ -54,10 +54,11 @@ jobs:
           # Get the commit history between the last prod release and the current beta SHA
           commits=$(git log --oneline --no-merges --pretty="%H" ${{ steps.prod_sha.outputs.sha }}..${{ steps.beta_sha.outputs.sha }})
 
-          IFS=$'\n' read -rd '' -a COMMITS_ARRAY <<< "$commits"
+          echo "commits<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$commits" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
-          echo "commits=${COMMITS_ARRAY[@]}" >> "$GITHUB_OUTPUT"
-          echo "✅ Found $commits"
+          echo "✅ Found commits: $commits"
       # - name: Get filtered commits between prod and beta
       #   id: filtered_commits
       #   run: |
