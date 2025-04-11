@@ -195,13 +195,15 @@ jobs:
           echo "EOF" >> "$GITHUB_OUTPUT"
 
           echo "✅ Found commits: $commits"
+          echo "git log --oneline --no-merges ${{ github.event.deployment.sha }}..${{ steps.last_beta_deploy.outputs.sha }}"
 
       - name: 📝Regenerate and Append Release Notes
+        if: ${{ steps.compare_sha_diff.outputs.commits != '' }}
         run: |
           COMMITS=(${{ steps.compare_sha_diff.outputs.commits }})
           NEW_TAG="v-next"
 
-          #echo "📌 Generating release notes from $LAST_PROD_TAG to $BETA_SHA"
+          # echo "📌 Generating release notes from $LAST_PROD_TAG to $BETA_SHA"
           RELEASE_NOTES="# Changelog\n\n"
 
           for COMMIT in "${COMMITS[@]}"; do
@@ -224,6 +226,9 @@ jobs:
           echo -e "$RELEASE_NOTES" > release_notes.md
           echo "📝 Generated release notes:"
           cat release_notes.md
+
+          # Edit the existing draft release with the new notes
+          gh release edit "$NEW_TAG" --draft --notes-file "$RELEASE_NOTES"
 
         # INSERT CODE HERE
 
