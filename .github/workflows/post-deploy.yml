@@ -39,7 +39,7 @@ jobs:
         id: last_prod_tag
         run: |
           # Get the latest published (non-draft) release tag
-          tag=$(gh release list --json name,isLatest --jq '.[] | select(.isLatest)|.name')
+          tag=$(gh release list --json name,isLatest,tagName --jq '.[] | select(.isLatest)|.tagName')
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "tag=$tag"
 
