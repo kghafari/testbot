@@ -14,7 +14,11 @@
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@testbot/generate-release-notes": [
+        "libs/github-actions/generate-release-notes/src/index.ts"
+      ]
+    }
   },
   "exclude": ["node_modules", "tmp"]
 }

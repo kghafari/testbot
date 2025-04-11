@@ -1,0 +1,6 @@
+name: 'Generate Release Notes'
+description: 'Says hello for now'
+inputs: {}
+runs:
+  using: 'node20'
+  main: '../../../../dist/libs/github-actions/generate-release-notes/src/lib/generate-release-notes.js'

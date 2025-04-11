@@ -1,0 +1,27 @@
+{
+  "name": "generate-release-notes",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/github-actions/generate-release-notes/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/github-actions/generate-release-notes",
+        "tsConfig": "libs/github-actions/generate-release-notes/tsconfig.lib.json",
+        "packageJson": "libs/github-actions/generate-release-notes/package.json",
+        "main": "libs/github-actions/generate-release-notes/src/index.ts",
+        "assets": ["libs/github-actions/generate-release-notes/*.md"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "libs/github-actions/generate-release-notes/jest.config.ts"
+      }
+    }
+  }
+}
