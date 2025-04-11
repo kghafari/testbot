@@ -90,9 +90,3 @@ jobs:
 
       - name: Run local action
         uses: ./.github/actions/generate-release-notes
-
-      - name: Run local action2
-        uses: ./.github/actions/generate-release-notes/generate-release-notes.js
-
-      - name: Run local action3
-        uses: ./.github/actions/generate-release-notes.js

@@ -197,6 +197,7 @@ jobs:
           echo "✅ Found commits: $commits"
           echo "git log --oneline --no-merges ${{ github.event.deployment.sha }}..${{ steps.last_beta_deploy.outputs.sha }}"
 
+      # this still isn't quite right
       - name: 📝Regenerate and Append Release Notes
         if: ${{ steps.compare_sha_diff.outputs.commits != '' }}
         run: |
