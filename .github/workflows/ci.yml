@@ -10,6 +10,7 @@ on:
 permissions:
   actions: read
   contents: read
+  issues: write
 
 jobs:
   dev:
@@ -89,6 +90,7 @@ jobs:
         run: ls -R .github/actions/generate-release-notes
 
       - name: Run local action
+
         uses: ./.github/actions/generate-release-notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
