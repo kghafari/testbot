@@ -3,7 +3,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.runHelloWorld = runHelloWorld;
 const tslib_1 = require("tslib");
 const core = tslib_1.__importStar(require("@actions/core"));
+const action_1 = require("@octokit/action");
 function runHelloWorld() {
-    core.info('👋 Hello from generate-release-notes!');
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        core.info('👋 Hello from generate-release-notes!');
+        const octokit = new action_1.Octokit();
+        const [owner, repo] = 'kghafari/testbot/releases'.split('/');
+        // See https://developer.github.com/v3/issues/#create-an-issue
+        const { data } = yield octokit.request('POST /repos/{owner}/{repo}/issues', {
+            owner,
+            repo,
+            title: 'My test issue',
+        });
+        console.log('Issue created: %s', data.html_url);
+    });
 }
 //# sourceMappingURL=generate-release-notes.js.map
