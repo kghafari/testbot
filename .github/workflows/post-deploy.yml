@@ -28,6 +28,12 @@ jobs:
         id: beta_sha
         run: |
           echo "sha=${{ github.event.deployment.sha }}" >> "$GITHUB_OUTPUT"
+          echo "id=${{ github.event.deployment.id }}"
+          echo "statuses_url=${{ github.event.deployment.statuses_url }}"
+          echo "ref=${{ github.event.deployment.ref }}"
+          echo "environment=${{ github.event.deployment.environment }}"
+          echo "description=${{ github.event.deployment.description }}"
+          echo "url=${{ github.event.deployment.url }}"
 
       - name: Get last prod release tag
         id: last_prod_tag
@@ -59,30 +65,6 @@ jobs:
           echo "EOF" >> "$GITHUB_OUTPUT"
 
           echo "✅ Found commits: $commits"
-      # - name: Get filtered commits between prod and beta
-      #   id: filtered_commits
-      #   run: |
-      #     BETA_SHA=${{ steps.beta_sha.outputs.sha }}
-      #     PROD_SHA=${{ steps.prod_sha.outputs.sha }}
-
-      #     echo "🚀 Beta SHA: $BETA_SHA"
-      #     echo "📦 Prod SHA: $PROD_SHA"
-
-      #     COMMITS=()
-      #     CURRENT="$BETA_SHA"
-
-      #     while [[ "$CURRENT" != "$PROD_SHA" ]]; do
-      #       COMMITS+=("$CURRENT")
-      #       CURRENT=$(git rev-parse "$CURRENT^1")
-
-      #       if [[ -z "$CURRENT" ]]; then
-      #         echo "🛑 Reached root of history without hitting $PROD_SHA"
-      #         break
-      #       fi
-      #     done
-
-      #     echo "commits=${COMMITS[*]}" >> "$GITHUB_OUTPUT"
-      #     echo "✅ Found ${#COMMITS[@]} new commits"
 
       - name: Generate and Append Release Notes
         id: generate_release_notes
@@ -170,22 +152,6 @@ jobs:
           echo "::set-output name=tag_name::$(echo "$RELEASE" | jq -r '.tagName')"
           echo "::set-output name=release_url::$(echo "$RELEASE" | jq -r '.url')"
           echo "::set-output name=release_body::$(echo "$RELEASE" | jq -r '.body')"
-
-      # - name: Add Deployment Link to Release Notes
-      #   id: update_release_notes
-      #   run: |
-      #     # Get the link to the deployment workflow run
-      #     DEPLOYMENT_URL="${{ github.event.deployment_url }}"
-      #     RELEASE_BODY="${{ steps.find_draft_release.outputs.release_body }}"
-
-      #     # Add deployment link to the notes
-      #     UPDATED_BODY="${RELEASE_BODY}
-
-      #     Deployment URL: $DEPLOYMENT_URL"
-
-      #     # Update the draft release with the new notes
-      #     NEW_TAG="v-next"
-      #     gh release edit "$NEW_TAG" --draft --notes-file updated_notes.md
 
       - name: Rename Release
         id: rename_release
