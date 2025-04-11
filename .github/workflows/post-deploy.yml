@@ -228,11 +228,21 @@ jobs:
           cat release_notes.md
 
           # Edit the existing draft release with the new notes
-          gh release edit "$NEW_TAG" --draft --notes-file "$RELEASE_NOTES"
+          gh release edit "$NEW_TAG" --draft --notes-file release_notes.md
+
+          # Cut a new release with the changes that just went to prod
+          # eh just generate notes for now ig
+          NEW_TAG_N_TITLE=$(date +'%Y%m%d-%H%M%S')
+          gh release create "$NEW_TAG_N_TITLE" \
+            --target "${{ github.event.deployment.sha }}" \
+            --title "Release $NEW_TAG_N_TITLE" \
+            --draft=false \
+            --generate-notes
 
         # INSERT CODE HERE
 
       - name: Publish Release
+        if: ${{ steps.compare_sha_diff.outputs.commits == '' }}
         id: publish_release
         run: |
           # Get the tag 
