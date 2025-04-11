@@ -235,7 +235,7 @@ jobs:
           NEW_TAG_N_TITLE=$(date +'%Y%m%d-%H%M%S')
           gh release create "$NEW_TAG_N_TITLE" \
             --target "${{ github.event.deployment.sha }}" \
-            --title "Release $NEW_TAG_N_TITLE" \
+            --title "$NEW_TAG_N_TITLE" \
             --draft=false \
             --generate-notes
 
