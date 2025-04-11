@@ -53,8 +53,8 @@ jobs:
         run: |
           # Get the commit history between the last prod release and the current beta SHA
           commits=$(git log --oneline --no-merges --pretty="%H" ${{ steps.prod_sha.outputs.sha }}..${{ steps.beta_sha.outputs.sha }})
-          echo "commits=${COMMITS[*]}" >> "$GITHUB_OUTPUT"
-          echo "✅ Found ${#COMMITS[@]} new commits"
+          echo "commits=$commits" >> "$GITHUB_OUTPUT"
+          echo "✅ Found $commits"
       # - name: Get filtered commits between prod and beta
       #   id: filtered_commits
       #   run: |
@@ -90,8 +90,6 @@ jobs:
 
           echo "📌 Generating release notes from $LAST_PROD_TAG to $BETA_SHA"
 
-          RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA\n\n"
-
           for COMMIT in "${COMMITS[@]}"; do
             echo "🔎 Checking PR for commit $COMMIT"
 
@@ -108,6 +106,9 @@ jobs:
               RELEASE_NOTES+="- ${SHORT_SHA}: ${COMMIT_MSG}\n"
             fi
           done
+
+          RELEASE_NOTES="# Changelog from $LAST_PROD_TAG to $BETA_SHA\n\n"
+          RELEASE_NOTES+="${{ steps.commit_diffs.outputs.commits }}"
 
           echo -e "$RELEASE_NOTES" > release_notes.md
           echo "📝 Generated release notes:"
