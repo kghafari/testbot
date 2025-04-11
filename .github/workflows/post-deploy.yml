@@ -187,7 +187,17 @@ jobs:
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "last beta sha=$sha"
 
-          git log --oneline --no-merges --pretty="%H" ${{ github.event.deployment.sha }}..$sha
+      - name: Compare SHA diff
+        id: compare_sha_diff
+        run: |
+          # Get the commit history between the last prod release and the current beta SHA
+          commits=$(git log --oneline --no-merges --pretty="%H" ${{ github.event.deployment.sha }}..${{ steps.last_beta_deploy.outputs.sha }})
+
+          echo "commits<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$commits" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+          echo "✅ Found commits: $commits"
 
       - name: Publish Release
         id: publish_release
