@@ -48,38 +48,44 @@ jobs:
         run: |
           echo "🟢 Last prod release: ${{ steps.last_prod_tag.outputs.tag }} -> ${{ steps.prod_sha.outputs.sha }}"
           echo "🟡 Current beta SHA: ${{ steps.beta_sha.outputs.sha }}"
-
-      - name: Get filtered commits between prod and beta
-        id: filtered_commits
+      - name: Get commit diffs
+        id: commit_diffs
         run: |
-          BETA_SHA=${{ steps.beta_sha.outputs.sha }}
-          PROD_SHA=${{ steps.prod_sha.outputs.sha }}
-
-          echo "🚀 Beta SHA: $BETA_SHA"
-          echo "📦 Prod SHA: $PROD_SHA"
-
-          COMMITS=()
-          CURRENT="$BETA_SHA"
-
-          while [[ "$CURRENT" != "$PROD_SHA" ]]; do
-            COMMITS+=("$CURRENT")
-            CURRENT=$(git rev-parse "$CURRENT^1")
-
-            if [[ -z "$CURRENT" ]]; then
-              echo "🛑 Reached root of history without hitting $PROD_SHA"
-              break
-            fi
-          done
-
+          # Get the commit history between the last prod release and the current beta SHA
+          commits=$(git log --oneline --no-merges --pretty="%H" ${{ steps.prod_sha.outputs.sha }}..${{ steps.beta_sha.outputs.sha }})
           echo "commits=${COMMITS[*]}" >> "$GITHUB_OUTPUT"
           echo "✅ Found ${#COMMITS[@]} new commits"
+      # - name: Get filtered commits between prod and beta
+      #   id: filtered_commits
+      #   run: |
+      #     BETA_SHA=${{ steps.beta_sha.outputs.sha }}
+      #     PROD_SHA=${{ steps.prod_sha.outputs.sha }}
+
+      #     echo "🚀 Beta SHA: $BETA_SHA"
+      #     echo "📦 Prod SHA: $PROD_SHA"
+
+      #     COMMITS=()
+      #     CURRENT="$BETA_SHA"
+
+      #     while [[ "$CURRENT" != "$PROD_SHA" ]]; do
+      #       COMMITS+=("$CURRENT")
+      #       CURRENT=$(git rev-parse "$CURRENT^1")
+
+      #       if [[ -z "$CURRENT" ]]; then
+      #         echo "🛑 Reached root of history without hitting $PROD_SHA"
+      #         break
+      #       fi
+      #     done
+
+      #     echo "commits=${COMMITS[*]}" >> "$GITHUB_OUTPUT"
+      #     echo "✅ Found ${#COMMITS[@]} new commits"
 
       - name: Generate and Append Release Notes
         id: generate_release_notes
         run: |
           BETA_SHA=${{ steps.beta_sha.outputs.sha }}
           LAST_PROD_TAG=${{ steps.last_prod_tag.outputs.tag }}
-          COMMITS=(${{ steps.filtered_commits.outputs.commits }})
+          COMMITS=(${{ steps.commit_diffs.outputs.commits }})
           NEW_TAG="v-next"
 
           echo "📌 Generating release notes from $LAST_PROD_TAG to $BETA_SHA"
