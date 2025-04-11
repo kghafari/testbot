@@ -40,15 +40,15 @@ jobs:
         run: |
           # Get the latest published (non-draft) release tag
           tag=$(gh release list --json name,isLatest --jq '.[] | select(.isLatest)|.name')
-          echo "tag=$tag"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag"
 
       - name: Resolve tag to SHA
         id: prod_sha
         run: |
           sha=$(git rev-list -n 1 ${{ steps.last_prod_tag.outputs.tag }})
-          echo "sha=$sha"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha"
 
       - name: Display info (optional)
         run: |
@@ -66,7 +66,7 @@ jobs:
 
           echo "✅ Found commits: $commits"
 
-      - name: Generate and Append Release Notes
+      - name: 📝Generate and Append Release Notes
         id: generate_release_notes
         run: |
           BETA_SHA=${{ steps.beta_sha.outputs.sha }}
@@ -98,7 +98,7 @@ jobs:
           echo "📝 Generated release notes:"
           cat release_notes.md
 
-      - name: Create or Update Draft Release
+      - name: ✏️Create or Update Draft Release
         id: create_draft
         run: |
           # Inputs
@@ -125,14 +125,9 @@ jobs:
               --draft \
               --notes-file "$RELEASE_NOTES_FILE"
           fi
-      - name: do some outputs
-        run: |
-          echo "beta_sha output: ${{ steps.beta_sha.outputs.sha }}"
-          echo "last_prod_tag output: ${{ steps.last_prod_tag.outputs.tag }}"
-          echo "prod_sha output: ${{ steps.prod_sha.outputs.sha }}"
-          echo "Release Notes: ${{ steps.create_draft.outputs.release_body }}"
 
   publish-prod-release:
+    # there's more that needs to be done here
     runs-on: ubuntu-latest
     if: >
       github.event.deployment.environment == 'prod' &&
@@ -153,8 +148,49 @@ jobs:
           echo "::set-output name=release_url::$(echo "$RELEASE" | jq -r '.url')"
           echo "::set-output name=release_body::$(echo "$RELEASE" | jq -r '.body')"
 
-      - name: Rename Release
-        id: rename_release
+      # we need to update the draft release one last time
+      # to ensure we dont have any stale data in the release notes
+      # like if someone deploys a release that isn't the latest
+      # then we get stale data in the release notes
+
+      - name: Get last deployed beta SHA
+        id: last_beta_deploy
+        run: |
+          # GETS LAST SUCCESSFUL BETA DEPLOY SHA
+          # Get the last 10 deployments to the 'dev' environment
+          deployments=$(gh api \
+          -H "Accept: application/vnd.github+json" \
+          "repos/kghafari/testbot/deployments?environment=dev&per_page=10")
+
+          # Extract deployment IDs and SHAs
+          deploy_info=$(echo "$deployments" | jq -c '.[] | {id: .id, sha: .sha}')
+
+          # Loop through each deployment to check status
+          while IFS= read -r deployment; do
+          id=$(echo "$deployment" | jq -r '.id')
+          sha=$(echo "$deployment" | jq -r '.sha')
+
+          # Get statuses for the deployment
+          statuses=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            "repos/kghafari/testbot/deployments/$id/statuses")
+
+          # Check for success state
+          success=$(echo "$statuses" | jq -e '.[] | select(.state == "success")' > /dev/null && echo "yes" || echo "no")
+
+          if [ "$success" == "yes" ]; then
+            echo "✅ Successful deployment found!"
+            echo "SHA: $sha"
+            break
+          fi
+          done
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "last beta sha=$sha"
+
+          git log --oneline --no-merges --pretty="%H" ${{ github.event.deployment.sha }}..$sha
+
+      - name: Publish Release
+        id: publish_release
         run: |
           # Get the tag 
           DRAFT_TAG="${{ steps.find_draft_release.outputs.tag_name }}"
