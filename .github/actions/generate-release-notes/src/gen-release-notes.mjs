@@ -7,69 +7,46 @@ const MyOctokit = Octokit.plugin(restEndpointMethods);
 const octokit = new MyOctokit();
 const [owner, repo] = 'kghafari/testbot'.split('/');
 export async function generateReleaseNotes() {
-    const handleDeploymentEvent = (event) => {
-        try {
-            core.info(`
-    ========= Deployment Details =========
-    ID: ${event.deployment.id}
-    SHA: ${event.deployment.sha}
-    Ref: ${event.deployment.ref}
-    URL: ${event.deployment.url}
-    Environment: ${event.deployment.environment}
-    Creator: ${event.deployment.creator?.login}
-    Description: ${event.deployment.description || 'No description provided'}
-    Payload?: ${event.deployment.payload}
-    ======================================
-    `);
-            core.info(JSON.stringify(event));
-        }
-        catch (error) {
-            core.setFailed(`This doesn't seem to be a DEPLOYMENT event 😭: ${error}`);
-        }
-    };
-    const handleDeploymentStatusEvent = (event) => {
-        try {
-            core.info(`
-        ========= Deployment Details =========
-        ID: 🔎${event.deployment.id}
-        Environment: 🔎${event.deployment.environment}
-        STATE: 🔎${event.deployment_status.state}
-        SHA: 🔎${event.deployment.sha}
-        Ref: 🔎${event.deployment.ref}
-        URL: 🔎${event.deployment.url}
-        Creator: 🔎${event.deployment.creator?.login}
-        Description: 🔎${event.deployment.description || 'No description provided'}
-        ======================================
-        `);
-        }
-        catch (error) {
-            core.setFailed(`This doesn't seem to be a Status event 😭: ${error}`);
-        }
-    };
-    const eventPath = process.env.GITHUB_EVENT_PATH;
-    if (!eventPath) {
-        throw new Error('GITHUB_EVENT_PATH not defined');
+    //const deploymentEvent = getEvent() as DeploymentEvent;
+    const deploymentStatusEvent = getEvent();
+    //printDeploymentEvent(deploymentEvent);
+    printDeploymentStatusEvent(deploymentStatusEvent);
+    if (deploymentStatusEvent.deployment_status.state === 'success' &&
+        deploymentStatusEvent.deployment.environment === 'dev') {
+        core.info('Dev deploy was successful!');
+        core.info(`
+      
+      =====DEV DEPLOY SUCCESS====
+      ID: ${deploymentStatusEvent.deployment.id}
+      Action: ${deploymentStatusEvent.action}
+      Workflow Html Url: ${deploymentStatusEvent.workflow.html_url}
+      Environment: ${deploymentStatusEvent.deployment.environment}
+      SHA: ${deploymentStatusEvent.deployment.sha}
+      Ref: ${deploymentStatusEvent.deployment.ref}
+      URL: ${deploymentStatusEvent.deployment.url}
+      `);
+        const latestRelease = await octokit.rest.repos.getLatestRelease({
+            owner: owner,
+            repo: repo,
+        });
+        core.info(` 
+      
+      ====LAST PROD RELEASE INFO====
+      Name: ${latestRelease.data.name}
+      Tag Name: ${latestRelease.data.tag_name}
+      ID: ${latestRelease.data.id}
+      URL: ${latestRelease.data.html_url}
+      Created at: ${latestRelease.data.created_at}
+      SHA: ${latestRelease.data.target_commitish}
+      Tag: ${latestRelease.data.tag_name}
+      Draft: ${latestRelease.data.draft}
+      Prerelease: ${latestRelease.data.prerelease}
+      Assets: ${latestRelease.data.assets.length}
+      Assets URL: ${latestRelease.data.assets_url}
+      Body: ${latestRelease.data.body}
+      `);
     }
-    const rawEvent = fs.readFileSync(eventPath, 'utf-8');
-    let event;
-    try {
-        event = JSON.parse(rawEvent);
-    }
-    catch (error) {
-        core.setFailed(`This doesn't seem to be a deployment event 😭: ${error}`);
-        return;
-    }
-    // 3. Call your handler
-    handleDeploymentEvent(event);
-    handleDeploymentStatusEvent(event);
-    // https://developer.github.com/v3/users/#get-the-authenticated-user
-    const repos = await octokit.rest.repos.listDeployments({
-        per_page: 10,
-        owner: owner,
-        repo: repo,
-    });
-    core.info(JSON.stringify(repos.data, null, 2));
-    core.info('👋 Hello from generate-release-notes!');
+    // listDeployments();
     // 1.
     // GH_TOKEN
     // 2. Split early
@@ -87,9 +64,55 @@ export async function generateReleaseNotes() {
     // Perhaps another config value
     // - tag, title, date, body, sha, url
 }
-// function getLastSuccessfulDeploy(envinronment: string): string {
-//   const octokit = new Octokit();
-//   return '';
-// }
+function getEvent() {
+    const eventPath = process.env.GITHUB_EVENT_PATH;
+    if (!eventPath) {
+        throw new Error('GITHUB_EVENT_PATH not defined');
+    }
+    const rawEvent = fs.readFileSync(eventPath, 'utf-8');
+    try {
+        return JSON.parse(rawEvent);
+    }
+    catch (error) {
+        core.setFailed(`This doesn't seem to be a deployment event 😭: ${error}`);
+        return;
+    }
+}
+function printDeploymentStatusEvent(event) {
+    core.info(`
+    ========= Deployment Status Details =========
+    ID: ${event.deployment.id}
+    Environment: ${event.deployment.environment}
+    STATE: ${event.deployment_status.state}
+    SHA: ${event.deployment.sha}
+    Ref: ${event.deployment.ref}
+    URL: ${event.deployment.url}
+    Creator: ${event.deployment.creator?.login}
+    Description: ${event.deployment.description || 'No description provided'}
+    ======================================
+  `);
+}
+function printDeploymentEvent(event) {
+    core.info(`
+    ========= Deployment Details =========
+    ID: ${event.deployment.id}
+    SHA: ${event.deployment.sha}
+    Ref: ${event.deployment.ref}
+    URL: ${event.deployment.url}
+    Environment: ${event.deployment.environment}
+    Creator: ${event.deployment.creator?.login}
+    Description: ${event.deployment.description || 'No description provided'}
+    Payload?: ${event.deployment.payload}
+    ======================================
+  `);
+}
+async function listDeployments() {
+    const repos = await octokit.rest.repos.listDeployments({
+        per_page: 10,
+        owner: owner,
+        repo: repo,
+    });
+    core.info(JSON.stringify(repos.data, null, 2));
+}
 generateReleaseNotes();
 //# sourceMappingURL=gen-release-notes.mjs.map
