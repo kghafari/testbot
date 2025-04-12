@@ -18,10 +18,20 @@ export async function generateReleaseNotes() {
     //     console.log(`${event.sender.login} completed something!`);
     //   }
     // };
+    const handleAnyAction = (event) => {
+        try {
+            core.info(`=========Deployment event: ${event.deployment.deployment.id}==========`);
+            core.info(`=========Deployment status: ${event.deployment_status.deployment_status.state}==========`);
+            console.log(JSON.stringify(event));
+            core.info(JSON.stringify(event));
+        }
+        catch (error) {
+            core.setFailed(`This doesn't seem to be a deployment event 😭: ${error}`);
+        }
+    };
     const handleDeploymentEvent = (event) => {
         try {
             core.info(`=========Deployment event: ${event.deployment.id}==========`);
-            console.log(JSON.stringify(event));
             core.info(JSON.stringify(event));
         }
         catch (error) {
@@ -31,7 +41,6 @@ export async function generateReleaseNotes() {
     const handleDeploymentStatusEvent = (event) => {
         try {
             core.info(`=========Deployment Status Event: ${event.deployment.id}==========`);
-            core.info(JSON.stringify(event));
             core.info(`Deployment status: ${event.deployment_status.state}`);
         }
         catch (error) {
@@ -54,6 +63,7 @@ export async function generateReleaseNotes() {
     // 3. Call your handler
     handleDeploymentEvent(event);
     handleDeploymentStatusEvent(event);
+    handleAnyAction(event);
     // https://developer.github.com/v3/users/#get-the-authenticated-user
     octokit.rest.users.getAuthenticated({});
     const repos = await octokit.rest.repos.listDeployments({
@@ -61,6 +71,7 @@ export async function generateReleaseNotes() {
         owner: owner,
         repo: repo,
     });
+    core.info(JSON.stringify(repos.data, null, 2));
     // for (const deployment of repos.data) {
     //   console.log('============DEPLOYMENT=============');
     //   console.log(deployment);
