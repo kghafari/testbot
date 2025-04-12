@@ -1,10 +1,7 @@
 name: 🥈 Post Deploy Rev2
 
-# temp on pull_req. Should be on deployment_status
-# too noisy!
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  deployment_status:
 
 permissions:
   actions: read
