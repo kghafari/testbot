@@ -8,13 +8,17 @@ import {
   WebhookEventMap,
 } from '@octokit/webhooks-types';
 import { throttling } from '@octokit/plugin-throttling';
+import { createActionAuth } from '@octokit/auth-action';
 
 import * as fs from 'fs';
 
-// const token = process.env.GITHUB_TOKEN;
+const auth = createActionAuth();
+const authentication = await auth();
 
 const MyOctokit = Octokit.plugin(restEndpointMethods, throttling);
 const octokit = new MyOctokit({
+  authStrategy: createActionAuth,
+  auth: authentication,
   throttle: {
     onRateLimit: (retryAfter, options) => {
       core.warning(

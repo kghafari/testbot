@@ -2,10 +2,14 @@ import { Octokit } from '@octokit/core';
 import * as core from '@actions/core';
 import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods';
 import { throttling } from '@octokit/plugin-throttling';
+import { createActionAuth } from '@octokit/auth-action';
 import * as fs from 'fs';
-// const token = process.env.GITHUB_TOKEN;
+const auth = createActionAuth();
+const authentication = await auth();
 const MyOctokit = Octokit.plugin(restEndpointMethods, throttling);
 const octokit = new MyOctokit({
+    authStrategy: createActionAuth,
+    auth: authentication,
     throttle: {
         onRateLimit: (retryAfter, options) => {
             core.warning(`Request quota exhausted for request ${options.method} ${options.url}`);
