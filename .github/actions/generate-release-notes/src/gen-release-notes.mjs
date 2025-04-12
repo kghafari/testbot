@@ -1,4 +1,4 @@
-import { Octokit } from '@octokit/action';
+import { Octokit } from '@octokit/core';
 import * as core from '@actions/core';
 import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods';
 import * as fs from 'fs';
@@ -7,20 +7,20 @@ const MyOctokit = Octokit.plugin(restEndpointMethods);
 const octokit = new MyOctokit();
 const [owner, repo] = 'kghafari/testbot'.split('/');
 export async function generateReleaseNotes() {
-    const handleAnyAction = (event) => {
-        try {
-            core.info(`=========ANY EVENT ID: ${event.deployment.deployment.id}==========`);
-            core.info(`=========ANY EVENT STATE: ${event.deployment_status.deployment_status.state}==========`);
-            console.log(JSON.stringify(event));
-            core.info(JSON.stringify(event));
-        }
-        catch (error) {
-            core.setFailed(`This doesn't seem to be an ANY event 😭: ${error}`);
-        }
-    };
     const handleDeploymentEvent = (event) => {
         try {
-            core.info(`=========Deployment event: ${event.deployment.id}==========`);
+            core.info(`
+    ========= Deployment Details =========
+    ID: ${event.deployment.id}
+    SHA: ${event.deployment.sha}
+    Ref: ${event.deployment.ref}
+    URL: ${event.deployment.url}
+    Environment: ${event.deployment.environment}
+    Creator: ${event.deployment.creator?.login}
+    Description: ${event.deployment.description || 'No description provided'}
+    Payload?: ${event.deployment.payload}
+    ======================================
+    `);
             core.info(JSON.stringify(event));
         }
         catch (error) {
@@ -29,8 +29,18 @@ export async function generateReleaseNotes() {
     };
     const handleDeploymentStatusEvent = (event) => {
         try {
-            core.info(`=========Status Event: ${event.deployment.id}==========`);
-            core.info(`Status: ${event.deployment_status.state}`);
+            core.info(`
+        ========= Deployment Details =========
+        ID: 🔎${event.deployment.id}
+        Environment: 🔎${event.deployment.environment}
+        STATE: 🔎${event.deployment_status.state}
+        SHA: 🔎${event.deployment.sha}
+        Ref: 🔎${event.deployment.ref}
+        URL: 🔎${event.deployment.url}
+        Creator: 🔎${event.deployment.creator?.login}
+        Description: 🔎${event.deployment.description || 'No description provided'}
+        ======================================
+        `);
         }
         catch (error) {
             core.setFailed(`This doesn't seem to be a Status event 😭: ${error}`);
@@ -52,9 +62,7 @@ export async function generateReleaseNotes() {
     // 3. Call your handler
     handleDeploymentEvent(event);
     handleDeploymentStatusEvent(event);
-    handleAnyAction(event);
     // https://developer.github.com/v3/users/#get-the-authenticated-user
-    octokit.rest.users.getAuthenticated({});
     const repos = await octokit.rest.repos.listDeployments({
         per_page: 10,
         owner: owner,

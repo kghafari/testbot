@@ -84,7 +84,7 @@ jobs:
 
       # building every time for now
       - name: Build release notes lib
-        run: npx nx run generate-release-notes:build
+        run: npx nx run generate-release-notes:build:action
 
       # - name: List generated action files
       #   run: ls -R .github/actions/generate-release-notes
