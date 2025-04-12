@@ -9,13 +9,13 @@ const [owner, repo] = 'kghafari/testbot'.split('/');
 export async function generateReleaseNotes() {
     const handleAnyAction = (event) => {
         try {
-            core.info(`=========Deployment event: ${event.deployment.deployment.id}==========`);
-            core.info(`=========Deployment status: ${event.deployment_status.deployment_status.state}==========`);
+            core.info(`=========ANY EVENT ID: ${event.deployment.deployment.id}==========`);
+            core.info(`=========ANY EVENT STATE: ${event.deployment_status.deployment_status.state}==========`);
             console.log(JSON.stringify(event));
             core.info(JSON.stringify(event));
         }
         catch (error) {
-            core.setFailed(`This doesn't seem to be a deployment event 😭: ${error}`);
+            core.setFailed(`This doesn't seem to be an ANY event 😭: ${error}`);
         }
     };
     const handleDeploymentEvent = (event) => {
@@ -24,16 +24,16 @@ export async function generateReleaseNotes() {
             core.info(JSON.stringify(event));
         }
         catch (error) {
-            core.setFailed(`This doesn't seem to be a deployment event 😭: ${error}`);
+            core.setFailed(`This doesn't seem to be a DEPLOYMENT event 😭: ${error}`);
         }
     };
     const handleDeploymentStatusEvent = (event) => {
         try {
-            core.info(`=========Deployment Status Event: ${event.deployment.id}==========`);
-            core.info(`Deployment status: ${event.deployment_status.state}`);
+            core.info(`=========Status Event: ${event.deployment.id}==========`);
+            core.info(`Status: ${event.deployment_status.state}`);
         }
         catch (error) {
-            core.setFailed(`This doesn't seem to be a deployment status event 😭: ${error}`);
+            core.setFailed(`This doesn't seem to be a Status event 😭: ${error}`);
         }
     };
     const eventPath = process.env.GITHUB_EVENT_PATH;
