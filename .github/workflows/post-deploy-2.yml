@@ -1,0 +1,19 @@
+name: 🥈 Post Deploy Rev2
+
+on:
+  deployment_status:
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  dev:
+    environment: dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run local action
+        uses: ./.github/actions/generate-release-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
