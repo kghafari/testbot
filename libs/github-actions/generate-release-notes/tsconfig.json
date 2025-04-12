@@ -1,24 +1,15 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "ESNext",
+    "target": "ES2020",
     "outDir": ".github/actions/generate-release-notes",
-    "rootDir": "libs/github-actions/generate-release-notes/src/lib",
+    "rootDir": "src/lib",
+    "moduleResolution": "Node",
     "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "strict": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "resolveJsonModule": true
   },
-  "exclude": [
-    "**/*.spec.ts",
-    "node_modules"
-  ],
-  "references": [
-    {
-      "path": "./tsconfig.lib.json"
-    },
-    {
-      "path": "./tsconfig.spec.json"
-    }
-  ]
+  "include": ["src/lib/gen-release-notes.mts"],
+  "exclude": ["**/*.spec.ts", "node_modules"]
 }
