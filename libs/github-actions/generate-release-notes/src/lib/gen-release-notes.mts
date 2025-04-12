@@ -46,7 +46,6 @@ export async function generateReleaseNotes() {
     });
 
     core.info(` 
-      
       ====LAST PROD RELEASE INFO====
       Name: ${latestRelease.data.name}
       Tag Name: ${latestRelease.data.tag_name}
@@ -61,6 +60,77 @@ export async function generateReleaseNotes() {
       Assets URL: ${latestRelease.data.assets_url}
       Body: ${latestRelease.data.body}
       `);
+
+    const comparison = await octokit.rest.repos.compareCommits({
+      owner,
+      repo,
+      base: latestRelease.data.target_commitish,
+      head: deploymentStatusEvent.deployment.sha,
+    });
+
+    const commits = comparison.data.commits;
+    core.info(`🔢 Found ${commits.length} commits to process.`);
+
+    let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
+
+    for (const commit of commits) {
+      const commitSha = commit.sha;
+      const shortSha = commitSha.slice(0, 7);
+      const commitMessage = commit.commit.message.split('\n')[0];
+
+      try {
+        const prResponse =
+          await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
+            owner,
+            repo,
+            commit_sha: commitSha,
+          });
+
+        if (prResponse.data.length > 0) {
+          const pr = prResponse.data[0];
+          const prNum = pr.number;
+          const prTitle = pr.title;
+          const prAuthor = pr.user?.login || 'unknown';
+
+          releaseNotes += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
+        } else {
+          releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
+        }
+      } catch (err) {
+        core.warning(`⚠️ Failed to get PR for ${commitSha}: ${err}`);
+        releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
+      }
+    }
+    fs.writeFileSync('release_notes.md', releaseNotes);
+    core.info('📝 Release notes written to release_notes.md');
+    core.info(releaseNotes);
+
+    const maybeDraft = await octokit.rest.repos.getReleaseByTag({
+      owner: owner,
+      repo: repo,
+      tag: `v-next`,
+    });
+
+    if (maybeDraft.status === 200) {
+      core.info('Draft release already exists, updating it...');
+      await octokit.rest.repos.updateRelease({
+        owner: owner,
+        repo: repo,
+        release_id: maybeDraft.data.id,
+        body: releaseNotes,
+      });
+    } else {
+      core.info('Creating a new draft release...');
+      await octokit.rest.repos.createRelease({
+        owner: owner,
+        repo: repo,
+        tag_name: `v-next`,
+        name: `v-next`,
+        body: releaseNotes,
+        draft: true,
+        prerelease: true,
+      });
+    }
   }
 
   // listDeployments();
