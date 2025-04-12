@@ -1,23 +1,12 @@
-import { Octokit } from '@octokit/core';
+import { Octokit } from '@octokit/action';
 import * as core from '@actions/core';
 import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods';
-import { createActionAuth } from '@octokit/auth-action';
 import * as fs from 'fs';
 // const token = process.env.GITHUB_TOKEN;
-const auth = createActionAuth();
-const authentication = await auth();
 const MyOctokit = Octokit.plugin(restEndpointMethods);
-const octokit = new MyOctokit({
-    auth: authentication.token,
-    authStrategy: auth,
-});
+const octokit = new MyOctokit();
 const [owner, repo] = 'kghafari/testbot'.split('/');
 export async function generateReleaseNotes() {
-    // const handleWebhookEvent = (event: WebhookEvent) => {
-    //   if ('action' in event && event.action === 'completed') {
-    //     console.log(`${event.sender.login} completed something!`);
-    //   }
-    // };
     const handleAnyAction = (event) => {
         try {
             core.info(`=========Deployment event: ${event.deployment.deployment.id}==========`);
@@ -72,13 +61,6 @@ export async function generateReleaseNotes() {
         repo: repo,
     });
     core.info(JSON.stringify(repos.data, null, 2));
-    // for (const deployment of repos.data) {
-    //   console.log('============DEPLOYMENT=============');
-    //   console.log(deployment);
-    //   core.info(`Id: ${deployment.id}`);
-    //   core.info(`Url: ${deployment.url}`);
-    //   core.info(`Sha: ${deployment.sha}`);
-    // }
     core.info('👋 Hello from generate-release-notes!');
     // 1.
     // GH_TOKEN

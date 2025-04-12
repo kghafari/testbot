@@ -1,27 +1,26 @@
-import { Octokit } from '@octokit/core';
+import { Octokit } from '@octokit/action';
 import * as core from '@actions/core';
 import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods';
-import { createActionAuth } from '@octokit/auth-action';
 import * as fs from 'fs';
 // const token = process.env.GITHUB_TOKEN;
-const auth = createActionAuth();
-const authentication = await auth();
 const MyOctokit = Octokit.plugin(restEndpointMethods);
-const octokit = new MyOctokit({
-    auth: authentication.token,
-    authStrategy: auth,
-});
+const octokit = new MyOctokit();
 const [owner, repo] = 'kghafari/testbot'.split('/');
 export async function generateReleaseNotes() {
-    // const handleWebhookEvent = (event: WebhookEvent) => {
-    //   if ('action' in event && event.action === 'completed') {
-    //     console.log(`${event.sender.login} completed something!`);
-    //   }
-    // };
+    const handleAnyAction = (event) => {
+        try {
+            core.info(`=========Deployment event: ${event.deployment.deployment.id}==========`);
+            core.info(`=========Deployment status: ${event.deployment_status.deployment_status.state}==========`);
+            console.log(JSON.stringify(event));
+            core.info(JSON.stringify(event));
+        }
+        catch (error) {
+            core.setFailed(`This doesn't seem to be a deployment event 😭: ${error}`);
+        }
+    };
     const handleDeploymentEvent = (event) => {
         try {
             core.info(`=========Deployment event: ${event.deployment.id}==========`);
-            console.log(JSON.stringify(event));
             core.info(JSON.stringify(event));
         }
         catch (error) {
@@ -31,7 +30,6 @@ export async function generateReleaseNotes() {
     const handleDeploymentStatusEvent = (event) => {
         try {
             core.info(`=========Deployment Status Event: ${event.deployment.id}==========`);
-            core.info(JSON.stringify(event));
             core.info(`Deployment status: ${event.deployment_status.state}`);
         }
         catch (error) {
@@ -54,6 +52,7 @@ export async function generateReleaseNotes() {
     // 3. Call your handler
     handleDeploymentEvent(event);
     handleDeploymentStatusEvent(event);
+    handleAnyAction(event);
     // https://developer.github.com/v3/users/#get-the-authenticated-user
     octokit.rest.users.getAuthenticated({});
     const repos = await octokit.rest.repos.listDeployments({
@@ -61,13 +60,7 @@ export async function generateReleaseNotes() {
         owner: owner,
         repo: repo,
     });
-    // for (const deployment of repos.data) {
-    //   console.log('============DEPLOYMENT=============');
-    //   console.log(deployment);
-    //   core.info(`Id: ${deployment.id}`);
-    //   core.info(`Url: ${deployment.url}`);
-    //   core.info(`Sha: ${deployment.sha}`);
-    // }
+    core.info(JSON.stringify(repos.data, null, 2));
     core.info('👋 Hello from generate-release-notes!');
     // 1.
     // GH_TOKEN

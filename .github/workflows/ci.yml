@@ -86,10 +86,10 @@ jobs:
       - name: Build release notes lib
         run: npx nx run generate-release-notes:build
 
-      - name: List generated action files
-        run: ls -R .github/actions/generate-release-notes
+      # - name: List generated action files
+      #   run: ls -R .github/actions/generate-release-notes
 
-      - name: Run local action
-        uses: ./.github/actions/generate-release-notes
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Run local action
+      #   uses: ./.github/actions/generate-release-notes
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
