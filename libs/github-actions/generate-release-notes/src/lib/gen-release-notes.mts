@@ -7,12 +7,31 @@ import {
   DeploymentStatusEvent,
   WebhookEventMap,
 } from '@octokit/webhooks-types';
+import { throttling } from '@octokit/plugin-throttling';
+
 import * as fs from 'fs';
 
 // const token = process.env.GITHUB_TOKEN;
 
-const MyOctokit = Octokit.plugin(restEndpointMethods);
-const octokit = new MyOctokit();
+const MyOctokit = Octokit.plugin(restEndpointMethods, throttling);
+const octokit = new MyOctokit({
+  throttle: {
+    onRateLimit: (retryAfter, options) => {
+      core.warning(
+        `Request quota exhausted for request ${options.method} ${options.url}`
+      );
+      if (options.request.retryCount === 0) {
+        core.info(`Retrying after ${retryAfter} seconds!`);
+        return true; // true = retry the request
+      }
+    },
+    onSecondaryRateLimit: (retryAfter, options) => {
+      core.warning(
+        `Abuse detected for request ${options.method} ${options.url}`
+      );
+    },
+  },
+});
 
 const [owner, repo] = 'kghafari/testbot'.split('/');
 
@@ -107,21 +126,31 @@ export async function generateReleaseNotes() {
 
     // Create or update the draft release
     try {
+      core.info('✅ Checking for Draft release...');
       const maybeDraft = await octokit.rest.repos.getReleaseByTag({
         owner: owner,
         repo: repo,
         tag: `v-next`,
       });
 
-      await octokit.rest.repos.updateRelease({
+      if (maybeDraft.status === 200) {
+        core.info('✅ Draft release 200!');
+      }
+
+      core.info('🛠 Draft Release Updating...');
+      const updatedDraft = await octokit.rest.repos.updateRelease({
         owner: owner,
         repo: repo,
         release_id: maybeDraft.data.id,
         body: releaseNotes,
       });
+
+      if (updatedDraft.status === 200) {
+        core.info('🛠 UpdatedDraft 200!');
+      }
     } catch (e) {
-      core.info('Draft release does not exist, creating a new one...');
-      await octokit.rest.repos.createRelease({
+      core.info('❎ Draft release does not exist, creating a new one...');
+      const newDraft = await octokit.rest.repos.createRelease({
         owner: owner,
         repo: repo,
         tag_name: `v-next`,
@@ -130,6 +159,12 @@ export async function generateReleaseNotes() {
         draft: true,
         prerelease: true,
       });
+
+      if (newDraft.status === 201) {
+        core.info('✅ Created NEW Draft release!');
+      } else {
+        core.info('❎ Failed to create Draft release!');
+      }
     }
   }
 

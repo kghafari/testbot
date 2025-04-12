@@ -18,6 +18,7 @@
     "@octokit/action": "^7.0.2",
     "@octokit/auth-action": "^5.1.2",
     "@octokit/plugin-rest-endpoint-methods": "^14.0.0",
+    "@octokit/plugin-throttling": "^10.0.0",
     "@octokit/rest": "^21.1.1",
     "@octokit/webhooks-types": "^7.6.1",
     "express": "^4.21.2",
