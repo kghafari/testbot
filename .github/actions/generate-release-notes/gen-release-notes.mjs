@@ -7,7 +7,10 @@ import * as fs from 'fs';
 const auth = createActionAuth();
 const authentication = await auth();
 const MyOctokit = Octokit.plugin(restEndpointMethods);
-const octokit = new MyOctokit({ auth: authentication.token });
+const octokit = new MyOctokit({
+    auth: authentication.token,
+    authStrategy: auth,
+});
 const [owner, repo] = 'kghafari/testbot'.split('/');
 export async function generateReleaseNotes() {
     // const handleWebhookEvent = (event: WebhookEvent) => {
@@ -16,20 +19,42 @@ export async function generateReleaseNotes() {
     //   }
     // };
     const handleDeploymentEvent = (event) => {
-        console.log(`${JSON.stringify(event)}`);
-        core.info(`🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉${event}`);
+        try {
+            core.info(`=========Deployment event: ${event.deployment.id}==========`);
+            console.log(JSON.stringify(event));
+            core.info(JSON.stringify(event));
+        }
+        catch (error) {
+            core.setFailed(`This doesn't seem to be a deployment event 😭: ${error}`);
+        }
+    };
+    const handleDeploymentStatusEvent = (event) => {
+        try {
+            core.info(`=========Deployment Status Event: ${event.deployment.id}==========`);
+            core.info(`Deployment status: ${event.deployment_status.state}`);
+        }
+        catch (error) {
+            core.setFailed(`This doesn't seem to be a deployment status event 😭: ${error}`);
+        }
     };
     const eventPath = process.env.GITHUB_EVENT_PATH;
     if (!eventPath) {
         throw new Error('GITHUB_EVENT_PATH not defined');
     }
     const rawEvent = fs.readFileSync(eventPath, 'utf-8');
-    // 2. Parse it and cast to WebhookEvent
-    const event = JSON.parse(rawEvent);
+    let event;
+    try {
+        event = JSON.parse(rawEvent);
+    }
+    catch (error) {
+        core.setFailed(`This doesn't seem to be a deployment event 😭: ${error}`);
+        return;
+    }
     // 3. Call your handler
     handleDeploymentEvent(event);
+    handleDeploymentStatusEvent(event);
     // https://developer.github.com/v3/users/#get-the-authenticated-user
-    octokit.rest.users.getAuthenticated();
+    octokit.rest.users.getAuthenticated({});
     const repos = await octokit.rest.repos.listDeployments({
         per_page: 10,
         owner: owner,
