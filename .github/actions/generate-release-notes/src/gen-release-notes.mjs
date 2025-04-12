@@ -82,13 +82,13 @@ export async function generateReleaseNotes() {
         fs.writeFileSync('release_notes.md', releaseNotes);
         core.info('📝 Release notes written to release_notes.md');
         core.info(releaseNotes);
-        const maybeDraft = await octokit.rest.repos.getReleaseByTag({
-            owner: owner,
-            repo: repo,
-            tag: `v-next`,
-        });
-        if (maybeDraft.status === 200) {
-            core.info('Draft release already exists, updating it...');
+        // Create or update the draft release
+        try {
+            const maybeDraft = await octokit.rest.repos.getReleaseByTag({
+                owner: owner,
+                repo: repo,
+                tag: `v-next`,
+            });
             await octokit.rest.repos.updateRelease({
                 owner: owner,
                 repo: repo,
@@ -96,8 +96,8 @@ export async function generateReleaseNotes() {
                 body: releaseNotes,
             });
         }
-        else {
-            core.info('Creating a new draft release...');
+        catch (e) {
+            core.info('Draft release does not exist, creating a new one...');
             await octokit.rest.repos.createRelease({
                 owner: owner,
                 repo: repo,
