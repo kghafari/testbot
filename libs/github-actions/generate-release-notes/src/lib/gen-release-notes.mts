@@ -12,13 +12,9 @@ import { createActionAuth } from '@octokit/auth-action';
 
 import * as fs from 'fs';
 
-const auth = createActionAuth();
-const authentication = await auth();
-
 const MyOctokit = Octokit.plugin(restEndpointMethods, throttling);
 const octokit = new MyOctokit({
-  authStrategy: createActionAuth,
-  auth: authentication,
+  auth: process.env.GITHUB_TOKEN,
   throttle: {
     onRateLimit: (retryAfter, options) => {
       core.warning(
