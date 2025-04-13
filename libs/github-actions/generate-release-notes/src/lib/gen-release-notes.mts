@@ -197,6 +197,7 @@ async function doProdReleaseNotes(
         core.info(JSON.stringify(releases, null, 2));
       }
 
+      maybeDraft.body += `[Last successful prod deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
       const date = new Date();
       const { data: updatedDraft } = await octokit.rest.repos.updateRelease({
         owner: owner,
@@ -205,6 +206,7 @@ async function doProdReleaseNotes(
         draft: false,
         prerelease: false,
         make_latest: 'true',
+        body: maybeDraft.body,
         tag_name: `${date
           .toISOString()
           .replace(/[-:]/g, '')

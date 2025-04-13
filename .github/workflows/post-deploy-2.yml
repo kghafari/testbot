@@ -9,8 +9,7 @@ permissions:
   issues: write
 
 jobs:
-  dev:
-    environment: dev
+  release-notes:
     runs-on: ubuntu-latest
     if: >
       github.event.deployment_status.state == 'success'
