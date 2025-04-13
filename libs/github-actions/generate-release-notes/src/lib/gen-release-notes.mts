@@ -55,6 +55,11 @@ export async function generateReleaseNotes() {
     doProdReleaseNotes(deploymentStatusEvent);
   } else {
     core.info('😵You seem to be lost. Skipping release notes generation.');
+    core.info(
+      `Triggering Actor: ${deploymentStatusEvent.workflow_run.triggering_actor} 
+      workflow url: ${deploymentStatusEvent.workflow_run.html_url}`
+    );
+    core.setFailed('This is not a deployment event! Whatever man!');
   }
 
   // listDeployments();
@@ -146,12 +151,9 @@ async function createOrUpdateDraftRelease(
     const maybeDraft = releases.find(
       (release) => release.tag_name === 'v-next' && release.draft === true
     );
-
-    // const maybeDraft = await octokit.rest.repos.getReleaseByTag({
-    //   owner: owner,
-    //   repo: repo,
-    //   tag: `v-next`,
-    // });
+    if (maybeDraft) {
+      core.info(`✅ Found Draft release: ${maybeDraft.name}... `);
+    }
 
     core.info('🛠 Draft Release Updating...');
     const updatedDraft = await octokit.rest.repos.updateRelease({
@@ -197,7 +199,7 @@ async function doProdReleaseNotes(
 
   // 2. Current deployment event sha (prod now)
   // From deploymentStatusEvent
-  deploymentStatusEvent.workflow.name;
+
   // 3. Last successful beta deployment sha (dev now)
   const lastSuccessfulDevDeploy = await getLastSuccessfulDevDeploymentSha(
     owner,
@@ -234,8 +236,12 @@ async function doProdReleaseNotes(
         (release) => release.tag_name === 'v-next' && release.draft === true
       );
       if (maybeDraft) {
-        core.info(`✅ Found Draft release: ${maybeDraft.name}... `);
-        return;
+        core.info(
+          `✅ Found Draft release: ${maybeDraft.name}... id: ${maybeDraft.id} `
+        );
+      } else {
+        core.info('UHH LOGGING ALL THESE I GUESS');
+        core.info(JSON.stringify(releases, null, 2));
       }
 
       const date = new Date();
@@ -255,7 +261,6 @@ async function doProdReleaseNotes(
         }),
         target_commitish: deploymentStatusEvent.deployment.sha,
       });
-      return;
     } catch (e) {
       core.info('❎ Failed to update Draft release!');
       core.info(e);
@@ -308,6 +313,12 @@ async function getLastSuccessfulDevDeploymentSha(
     const wasSuccessful = statuses.find((s) => s.state === 'success');
 
     if (wasSuccessful) {
+      core.info(`🏁Found last successful ${deployment.environment} deployment: 
+        SHA: ${deployment.sha}
+        URL: ${deployment.url}
+        Environment: ${deployment.environment}
+        ID: ${deployment.id}
+        `);
       return deployment.sha;
     }
   }
@@ -380,7 +391,6 @@ function printReleaseInfo(release: any) {
     Prerelease: ${release.data.prerelease}
     Assets: ${release.data.assets.length}
     Assets URL: ${release.data.assets_url}
-    Body: ${release.data.body}
     `);
 }
 
