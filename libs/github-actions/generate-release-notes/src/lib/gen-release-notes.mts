@@ -100,7 +100,7 @@ async function createOrUpdateDraftRelease(
   core.info(`🔢 Found ${commits.length} commits to process.`);
 
   let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
-  releaseNotes += `[Last Successful Beta Deploy ${deploymentStatusEvent.deployment.sha}](${deploymentStatusEvent.workflow.html_url})\n`;
+  releaseNotes += `[Last Successful Beta Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
 
   for (const commit of commits) {
     const commitSha = commit.sha;
@@ -137,21 +137,27 @@ async function createOrUpdateDraftRelease(
   // Create or update the draft release
   try {
     core.info('✅ Checking for Draft release...');
-    const maybeDraft = await octokit.rest.repos.getReleaseByTag({
+    const { data: releases } = await octokit.rest.repos.listReleases({
       owner: owner,
       repo: repo,
-      tag: `v-next`,
+      per_page: 20,
     });
 
-    if (maybeDraft.status === 200) {
-      core.info('✅ Draft release 200!');
-    }
+    const maybeDraft = releases.find(
+      (release) => release.tag_name === 'v-next' && release.draft === true
+    );
+
+    // const maybeDraft = await octokit.rest.repos.getReleaseByTag({
+    //   owner: owner,
+    //   repo: repo,
+    //   tag: `v-next`,
+    // });
 
     core.info('🛠 Draft Release Updating...');
     const updatedDraft = await octokit.rest.repos.updateRelease({
       owner: owner,
       repo: repo,
-      release_id: maybeDraft.data.id,
+      release_id: maybeDraft.id,
       body: releaseNotes,
     });
 
@@ -191,7 +197,7 @@ async function doProdReleaseNotes(
 
   // 2. Current deployment event sha (prod now)
   // From deploymentStatusEvent
-
+  deploymentStatusEvent.workflow.name;
   // 3. Last successful beta deployment sha (dev now)
   const lastSuccessfulDevDeploy = await getLastSuccessfulDevDeploymentSha(
     owner,
@@ -217,17 +223,26 @@ async function doProdReleaseNotes(
     );
 
     try {
-      const maybeDraft = await octokit.rest.repos.getReleaseByTag({
+      core.info('✅ Checking for Draft release...');
+      const { data: releases } = await octokit.rest.repos.listReleases({
         owner: owner,
         repo: repo,
-        tag: `v-next`, // magic string
+        per_page: 20,
       });
+
+      const maybeDraft = releases.find(
+        (release) => release.tag_name === 'v-next' && release.draft === true
+      );
+      if (maybeDraft) {
+        core.info(`✅ Found Draft release: ${maybeDraft.name}... `);
+        return;
+      }
 
       const date = new Date();
       await octokit.rest.repos.updateRelease({
         owner: owner,
         repo: repo,
-        release_id: maybeDraft.data.id,
+        release_id: maybeDraft.id,
         draft: false,
         prerelease: false,
         tag_name: `${date
