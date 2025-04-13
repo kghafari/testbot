@@ -300,7 +300,7 @@ async function listDeployments() {
     core.info(JSON.stringify(repos.data, null, 2));
 }
 async function getReleaseNotesBody(commits) {
-    let releaseNotes;
+    let releaseNotesBody = '';
     for (const commit of commits) {
         const commitSha = commit.sha;
         const shortSha = commitSha.slice(0, 7);
@@ -316,18 +316,20 @@ async function getReleaseNotesBody(commits) {
                 const prNum = pr.number;
                 const prTitle = pr.title;
                 const prAuthor = pr.user?.login || 'unknown';
-                releaseNotes += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
+                releaseNotesBody += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
             }
             else {
-                releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
+                releaseNotesBody += `- ${shortSha}: ${commitMessage}\n`;
             }
         }
         catch (err) {
             core.warning(`⚠️ Failed to get PR for ${commitSha}: ${err}`);
-            releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
+            releaseNotesBody += `- ${shortSha}: ${commitMessage}\n`;
         }
     }
-    return releaseNotes;
+    core.info(`📝 Release notes body generated!`);
+    core.info(releaseNotesBody);
+    return releaseNotesBody;
 }
 generateReleaseNotes();
 //# sourceMappingURL=gen-release-notes.mjs.map
