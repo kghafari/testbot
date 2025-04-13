@@ -63,28 +63,6 @@ export async function generateReleaseNotes() {
     );
     core.setFailed('This is not a deployment event! Whatever man!');
   }
-
-  // listDeployments();
-
-  // 1.
-  // GH_TOKEN
-
-  // 2. Split early
-  // we're either goign to go down the "beta deploy succes" path or the "prod deploy success" path
-  // don't forget I'm using dev as "beta" for my personal project. This should probably be a config value
-
-  // 3. Shared steps/values
-  // 3.1. LAST_PROD_RELEASE
-  // - tag, title, date, body, sha, url
-  // 3.2 CURRENT_SUCCESSFUL_DEPLOYMENT
-  // since we trigger on deploy, were gonna find the last successful deployment for a given environment
-
-  //const lastSuccessfulDeploy = getLastSuccessfulDeploy('dev');
-  // 4. beta steps/values
-  // 4.1 Named draft release "v-next" in our example.
-  // does it exist? create it if not. update it if it does.
-  // Perhaps another config value
-  // - tag, title, date, body, sha, url
 }
 
 async function createOrUpdateDraftRelease(
@@ -108,35 +86,8 @@ async function createOrUpdateDraftRelease(
 
   let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
   releaseNotes += `[Last Successful Beta Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
-  releaseNotes += getReleaseNotesBody(commits);
-  // for (const commit of commits) {
-  //   const commitSha = commit.sha;
-  //   const shortSha = commitSha.slice(0, 7);
-  //   const commitMessage = commit.commit.message.split('\n')[0];
+  releaseNotes += await getReleaseNotesBody(commits);
 
-  //   try {
-  //     const prResponse =
-  //       await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
-  //         owner,
-  //         repo,
-  //         commit_sha: commitSha,
-  //       });
-
-  //     if (prResponse.data.length > 0) {
-  //       const pr = prResponse.data[0];
-  //       const prNum = pr.number;
-  //       const prTitle = pr.title;
-  //       const prAuthor = pr.user?.login || 'unknown';
-
-  //       releaseNotes += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
-  //     } else {
-  //       releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
-  //     }
-  //   } catch (err) {
-  //     core.warning(`⚠️ Failed to get PR for ${commitSha}: ${err}`);
-  //     releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
-  //   }
-  // }
   fs.writeFileSync('release_notes.md', releaseNotes);
   core.info('📝 Release notes written to release_notes.md');
   core.info(releaseNotes);
@@ -223,7 +174,7 @@ async function doProdReleaseNotes(
 
   if (currentToBetaComparison.data.status === 'identical') {
     core.info(
-      'No differences between beta and prod. No need to create a new release.'
+      'No differences between beta and prod. Releasing existing draft! 😎'
     );
 
     try {
@@ -247,7 +198,7 @@ async function doProdReleaseNotes(
       }
 
       const date = new Date();
-      await octokit.rest.repos.updateRelease({
+      const { data: updatedDraft } = await octokit.rest.repos.updateRelease({
         owner: owner,
         repo: repo,
         release_id: maybeDraft.id,
@@ -264,6 +215,13 @@ async function doProdReleaseNotes(
         }),
         target_commitish: deploymentStatusEvent.deployment.sha,
       });
+      core.info(`🚀🚀🚀 Draft released!
+        Release ID: ${updatedDraft.id}
+        Release URL: ${updatedDraft.html_url}
+        Release Name: ${updatedDraft.name}
+        Release Tag: ${updatedDraft.tag_name}
+        Release SHA: ${maybeDraft.target_commitish}
+        `);
     } catch (e) {
       core.info('❎ Failed to update Draft release!');
       core.info(e);
@@ -271,7 +229,9 @@ async function doProdReleaseNotes(
   } else {
     let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
     releaseNotes += `[Last Successful Prod Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
-    core.info('🧈Differences between beta and prod. Creating a new release.');
+    releaseNotes += await getReleaseNotesBody(
+      currentToBetaComparison.data.commits
+    );
 
     const date = new Date();
 
@@ -294,26 +254,6 @@ async function doProdReleaseNotes(
     core.info('✅ Created new release!');
     core.info(`Release ID: ${newRelease.data.name}`);
     core.info(`Release URL: ${newRelease.data.html_url}`);
-  }
-
-  // const maybeDraft = await octokit.rest.repos.getReleaseByTag({
-  //   owner: owner,
-  //   repo: repo,
-  //   tag: `v-next`,
-  // });
-
-  // get the last successful deployment
-  const deployments = await octokit.rest.repos.listDeployments({
-    owner: owner,
-    repo: repo,
-    per_page: 1,
-    environment: 'prod',
-  });
-
-  if (deployments.status === 200) {
-    core.info('✅ Found last successful deployment!');
-  } else {
-    core.info('❎ Failed to find last successful deployment!');
   }
 }
 
