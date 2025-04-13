@@ -144,6 +144,9 @@ async function doProdReleaseNotes(
   clearDraftRelease();
 
   if (currentToBetaComparison.data.status === 'identical') {
+    core.info(
+      `🔎in the 'identical' block, here's the commits ${currentToBetaComparison.data.commits}`
+    );
     // this means that the beta and prod are the same, so we can create a new release
     // more or less unchanged
     core.info(
@@ -199,6 +202,11 @@ async function doProdReleaseNotes(
     // put this in a func later
 
     // Rebuild the draft release
+    core.info(
+      `🔎in the 'NOT identical' block, here's the commits ${currentToBetaComparison.data.commits}`
+    );
+
+    core.info('📝 Looks like theres some changes still in beta...');
     const draftNotes = await buildReleaseNotes(
       lastSuccessfulBetaDeploySha,
       deploymentStatusEvent.deployment.sha,
@@ -216,6 +224,7 @@ async function doProdReleaseNotes(
       name: 'v-next',
       target_commitish: deploymentStatusEvent.deployment.sha,
     });
+    core.info('📝 Recreated draft release...');
 
     // create a new release with the new notes
     const { data: comparison } = await octokit.rest.repos.compareCommits({
@@ -308,71 +317,6 @@ function getEvent(): WebhookEvent {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function printDeploymentStatusEvent(event: DeploymentStatusEvent) {
-  core.info(`
-    ========= Deployment Status Details =========
-    ID: ${event.deployment.id}
-    Environment: ${event.deployment.environment}
-    STATE: ${
-      event.deployment_status.state === 'success'
-        ? '✅ Success'
-        : event.deployment_status.state
-    }
-    SHA: ${event.deployment.sha}
-    Ref: ${event.deployment.ref}
-    URL: ${event.deployment.url}
-    Creator: ${event.deployment.creator?.login}
-    Description: ${event.deployment.description || 'No description provided'}
-    ======================================
-  `);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function printDeploymentEvent(event: DeploymentEvent) {
-  core.info(`
-    ========= Deployment Details =========
-    ID: ${event.deployment.id}
-    SHA: ${event.deployment.sha}
-    Ref: ${event.deployment.ref}
-    URL: ${event.deployment.url}
-    Environment: ${event.deployment.environment}
-    Creator: ${event.deployment.creator?.login}
-    Description: ${event.deployment.description || 'No description provided'}
-    Payload?: ${event.deployment.payload}
-    ======================================
-  `);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
-function printReleaseInfo(release: any) {
-  core.info(` 
-    ====LAST PROD RELEASE INFO====
-    Name: ${release.data.name}
-    Tag Name: ${release.data.tag_name}
-    ID: ${release.data.id}
-    URL: ${release.data.html_url}
-    Created at: ${release.data.created_at}
-    SHA: ${release.data.target_commitish}
-    Tag: ${release.data.tag_name}
-    Draft: ${release.data.draft}
-    Prerelease: ${release.data.prerelease}
-    Assets: ${release.data.assets.length}
-    Assets URL: ${release.data.assets_url}
-    `);
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function listDeployments() {
-  const repos = await octokit.rest.repos.listDeployments({
-    per_page: 10,
-    owner: owner,
-    repo: repo,
-  });
-
-  core.info(JSON.stringify(repos.data, null, 2));
-}
-
 async function buildReleaseNotes(
   from: string,
   to: string,
@@ -380,15 +324,15 @@ async function buildReleaseNotes(
   commits: any[]
 ) {
   let releaseNotes = `# Changelog from ${from} to ${to}\n\n`;
-  releaseNotes += `[Last Successful ${env} Deploy](${from})\n\n`;
-  releaseNotes += await getReleaseNotesBody(commits);
-  core.info(`Release Notes:`);
+  // releaseNotes += `[Last Successful ${env} Deploy](${from})\n\n`;
+  releaseNotes += await buildReleaseNotesBody(commits);
+  core.info(`💸Release Notes:`);
   core.info(releaseNotes);
   return releaseNotes;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getReleaseNotesBody(commits: any[]) {
+async function buildReleaseNotesBody(commits: any[]) {
   let releaseNotesBody = '';
   for (const commit of commits) {
     const commitSha = commit.sha;
