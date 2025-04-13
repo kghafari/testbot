@@ -4,6 +4,8 @@ import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods';
 import { throttling } from '@octokit/plugin-throttling';
 import { createActionAuth } from '@octokit/auth-action';
 import * as fs from 'fs';
+// TODO: I think we need to rethink the approach of searching for existing draft releases
+// we should probably just create a new one every time and delete the old one if it exists
 const MyOctokit = Octokit.plugin(restEndpointMethods, throttling);
 const octokit = new MyOctokit({
     authStrategy: createActionAuth,
@@ -27,14 +29,11 @@ export async function generateReleaseNotes() {
     if (deploymentStatusEvent.deployment_status.state === 'success' &&
         deploymentStatusEvent.deployment.environment === 'dev') {
         core.info('🧪Dev deploy was successful!');
-        printDeploymentStatusEvent(deploymentStatusEvent);
         createOrUpdateDraftRelease(deploymentStatusEvent);
     }
     else if (deploymentStatusEvent.deployment_status.state === 'success' &&
         deploymentStatusEvent.deployment.environment === 'prod') {
         core.info('🚀Prod deploy was successful!');
-        printDeploymentStatusEvent(deploymentStatusEvent);
-        // manage releaase notes for prod
         doProdReleaseNotes(deploymentStatusEvent);
     }
     else {
@@ -45,118 +44,82 @@ export async function generateReleaseNotes() {
     }
 }
 async function createOrUpdateDraftRelease(deploymentStatusEvent) {
+    // Get the latest release
     const latestRelease = await octokit.rest.repos.getLatestRelease({
         owner: owner,
         repo: repo,
     });
-    printReleaseInfo(latestRelease);
+    // Compare the latest release with the current deployment event sha
     const comparison = await octokit.rest.repos.compareCommits({
         owner,
         repo,
         base: latestRelease.data.target_commitish,
         head: deploymentStatusEvent.deployment.sha,
     });
+    if (comparison.data.status === 'identical') {
+        core.info('No new commits since the last release. Skipping...');
+        return;
+    }
     const commits = comparison.data.commits;
     core.info(`🔢 Found ${commits.length} commits to process.`);
-    let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
-    releaseNotes += `[Last Successful Beta Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
-    releaseNotes += await getReleaseNotesBody(commits);
-    fs.writeFileSync('release_notes.md', releaseNotes);
-    core.info('📝 Release notes written to release_notes.md');
-    core.info(releaseNotes);
+    const releaseNotes = await buildReleaseNotes(latestRelease.data.name, deploymentStatusEvent.deployment.sha, deploymentStatusEvent.deployment.environment, commits);
     // Create or update the draft release
-    try {
-        core.info('✅ Checking for Draft release...');
-        const { data: releases } = await octokit.rest.repos.listReleases({
-            owner: owner,
-            repo: repo,
-            per_page: 20,
-        });
-        const maybeDraft = releases.find((release) => release.tag_name === 'v-next' && release.draft === true);
-        if (maybeDraft) {
-            core.info(`✅ Found Draft release: ${maybeDraft.name}... `);
-        }
-        core.info('🛠 Draft Release Updating...');
-        const updatedDraft = await octokit.rest.repos.updateRelease({
-            owner: owner,
-            repo: repo,
-            release_id: maybeDraft.id,
-            body: releaseNotes,
-        });
-        if (updatedDraft.status === 200) {
-            core.info('🛠 UpdatedDraft 200!');
-        }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    clearDraftRelease();
+    core.info('✅ Creating new Draft release...');
+    const newDraft = await octokit.rest.repos.createRelease({
+        owner: owner,
+        repo: repo,
+        tag_name: `v-next`,
+        name: `v-next`,
+        body: releaseNotes,
+        target_commitish: deploymentStatusEvent.deployment.sha,
+        draft: true,
+        prerelease: true,
+    });
+    if (newDraft.status === 201) {
+        core.info('✅ Created NEW Draft release!');
     }
-    catch (e) {
-        core.info('❎ Draft release does not exist, creating a new one...');
-        const newDraft = await octokit.rest.repos.createRelease({
-            owner: owner,
-            repo: repo,
-            tag_name: `v-next`,
-            name: `v-next`,
-            body: releaseNotes,
-            target_commitish: deploymentStatusEvent.deployment.sha,
-            draft: true,
-            prerelease: true,
-        });
-        if (newDraft.status === 201) {
-            core.info('✅ Created NEW Draft release!');
-        }
-        else {
-            core.info('❎ Failed to create Draft release!');
-        }
+    else {
+        core.info('❌ Failed to create Draft release!');
     }
 }
 async function doProdReleaseNotes(deploymentStatusEvent) {
-    // 1. Last prod release
+    // Last prod release
     const latestRelease = await octokit.rest.repos.getLatestRelease({
         owner: owner,
         repo: repo,
     });
-    printReleaseInfo(latestRelease);
-    // 2. Current deployment event sha (prod now)
-    // From deploymentStatusEvent
-    // 3. Last successful beta deployment sha (dev now)
-    const lastSuccessfulDevDeploy = await getLastSuccessfulDevDeploymentSha(owner, repo);
-    // we need this when there actually is a difference between what's going to prod here
-    // and what's in beta. If there are no differences, we don't need to do anything, and we can just release
-    // the draft as is.
+    // Last successful beta deployment sha (dev now)
+    const lastSuccessfulBetaDeploySha = await getLastSuccessfulDevDeploymentSha(owner, repo);
     // if there are commits, we need to create a new release with the new notes
     // and update the draft release with the new notes. That has the new difference between beta and prod
     const currentToBetaComparison = await octokit.rest.repos.compareCommits({
         owner,
         repo,
-        base: lastSuccessfulDevDeploy,
+        base: lastSuccessfulBetaDeploySha,
         head: deploymentStatusEvent.deployment.sha,
     });
+    clearDraftRelease();
     if (currentToBetaComparison.data.status === 'identical') {
+        // this means that the beta and prod are the same, so we can create a new release
+        // more or less unchanged
         core.info('No differences between beta and prod. Releasing existing draft! 😎');
         try {
-            core.info('✅ Checking for Draft release...');
-            const { data: releases } = await octokit.rest.repos.listReleases({
-                owner: owner,
-                repo: repo,
-                per_page: 20,
+            const { data: comparison } = await octokit.rest.repos.compareCommits({
+                owner,
+                repo,
+                base: latestRelease.data.target_commitish,
+                head: deploymentStatusEvent.deployment.sha,
             });
-            const maybeDraft = releases.find((release) => release.tag_name === 'v-next' && release.draft === true);
-            if (maybeDraft) {
-                core.info(`✅ Found Draft release: ${maybeDraft.name}... id: ${maybeDraft.id} `);
-            }
-            else {
-                core.info('UHH LOGGING ALL THESE I GUESS');
-                core.info(JSON.stringify(releases, null, 2));
-            }
-            maybeDraft.body += `[Last successful prod deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
+            const releaseNotes = await buildReleaseNotes(latestRelease.data.name, deploymentStatusEvent.deployment.sha, deploymentStatusEvent.deployment.environment, comparison.commits);
             const date = new Date();
-            const { data: updatedDraft } = await octokit.rest.repos.updateRelease({
+            const { data: prodRelease } = await octokit.rest.repos.createRelease({
                 owner: owner,
                 repo: repo,
-                release_id: maybeDraft.id,
                 draft: false,
                 prerelease: false,
                 make_latest: 'true',
-                body: maybeDraft.body,
+                body: releaseNotes,
                 tag_name: `${date
                     .toISOString()
                     .replace(/[-:]/g, '')
@@ -167,12 +130,11 @@ async function doProdReleaseNotes(deploymentStatusEvent) {
                 }),
                 target_commitish: deploymentStatusEvent.deployment.sha,
             });
-            core.info(`🚀🚀🚀 Draft released!
-        Release ID: ${updatedDraft.id}
-        Release URL: ${updatedDraft.html_url}
-        Release Name: ${updatedDraft.name}
-        Release Tag: ${updatedDraft.tag_name}
-        Release SHA: ${maybeDraft.target_commitish}
+            core.info(`🚀🚀🚀 Prod released!
+        Release ID: ${prodRelease.id}
+        Release URL: ${prodRelease.html_url}
+        Release Name: ${prodRelease.name}
+        Release Tag: ${prodRelease.tag_name}
         `);
         }
         catch (e) {
@@ -184,28 +146,26 @@ async function doProdReleaseNotes(deploymentStatusEvent) {
         // TODO: UPDATE THE EXISTING DRAFT RELEASE WITH THE NEW NOTES - THIS IS THE IMPORTANT PART
         // NEED TO DIFF BETWEEN BETA AND PROD
         // put this in a func later
-        const { data: releases } = await octokit.rest.repos.listReleases({
+        // Rebuild the draft release
+        const draftNotes = await buildReleaseNotes(lastSuccessfulBetaDeploySha, deploymentStatusEvent.deployment.sha, deploymentStatusEvent.deployment.environment, currentToBetaComparison.data.commits);
+        await octokit.rest.repos.createRelease({
             owner: owner,
             repo: repo,
-            per_page: 20,
-        });
-        const maybeDraft = releases.find((release) => release.tag_name === 'v-next' && release.draft === true);
-        let draftNotes = `# Changelog from ${lastSuccessfulDevDeploy} to ${deploymentStatusEvent.deployment.sha}\n\n`;
-        draftNotes += `[Last Successful Prod Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
-        draftNotes += await getReleaseNotesBody(currentToBetaComparison.data.commits);
-        await octokit.rest.repos.updateRelease({
-            owner: owner,
-            repo: repo,
-            release_id: maybeDraft.id,
+            draft: true,
+            prerelease: true,
             body: draftNotes,
-            tag_name: latestRelease.data.tag_name,
-            name: latestRelease.data.name,
+            tag_name: 'v-next',
+            name: 'v-next',
             target_commitish: deploymentStatusEvent.deployment.sha,
         });
-        // Create a new release with the new notes and release it
-        let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
-        releaseNotes += `[Last Successful Prod Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
-        releaseNotes += await getReleaseNotesBody(currentToBetaComparison.data.commits);
+        // create a new release with the new notes
+        const { data: comparison } = await octokit.rest.repos.compareCommits({
+            owner,
+            repo,
+            base: latestRelease.data.target_commitish,
+            head: deploymentStatusEvent.deployment.sha,
+        });
+        const releaseNotes = await buildReleaseNotes(latestRelease.data.name, deploymentStatusEvent.deployment.sha, deploymentStatusEvent.deployment.environment, comparison.commits);
         const date = new Date();
         const newRelease = await octokit.rest.repos.createRelease({
             owner: owner,
@@ -268,6 +228,7 @@ function getEvent() {
         return;
     }
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function printDeploymentStatusEvent(event) {
     core.info(`
     ========= Deployment Status Details =========
@@ -299,7 +260,7 @@ function printDeploymentEvent(event) {
     ======================================
   `);
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 function printReleaseInfo(release) {
     core.info(` 
     ====LAST PROD RELEASE INFO====
@@ -324,6 +285,14 @@ async function listDeployments() {
         repo: repo,
     });
     core.info(JSON.stringify(repos.data, null, 2));
+}
+async function buildReleaseNotes(from, to, env, commits) {
+    let releaseNotes = `# Changelog from ${from} to ${to}\n\n`;
+    releaseNotes += `[Last Successful ${env} Deploy](${from})\n\n`;
+    releaseNotes += await getReleaseNotesBody(commits);
+    core.info(`Release Notes:`);
+    core.info(releaseNotes);
+    return releaseNotes;
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getReleaseNotesBody(commits) {
@@ -354,9 +323,29 @@ async function getReleaseNotesBody(commits) {
             releaseNotesBody += `- ${shortSha}: ${commitMessage}\n`;
         }
     }
-    core.info(`📝 Release notes body generated!`);
-    core.info(releaseNotesBody);
     return releaseNotesBody;
+}
+async function clearDraftRelease() {
+    core.info('✅ Checking for Draft release...');
+    const { data: releases } = await octokit.rest.repos.listReleases({
+        owner: owner,
+        repo: repo,
+        per_page: 50,
+    });
+    const maybeDraft = releases
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))
+        .find((release) => release.tag_name === 'v-next' && release.draft === true);
+    if (maybeDraft) {
+        core.info(`🙋‍♀️ Removing Old Draft Release: ${maybeDraft.name}... `);
+        await octokit.rest.repos.deleteRelease({
+            owner: owner,
+            repo: repo,
+            release_id: maybeDraft.id,
+        });
+    }
+    else {
+        core.info('😢No draft release found to remove!');
+    }
 }
 generateReleaseNotes();
 //# sourceMappingURL=gen-release-notes.mjs.map
