@@ -52,6 +52,7 @@ export async function generateReleaseNotes() {
     core.info('🚀Prod deploy was successful!');
     printDeploymentStatusEvent(deploymentStatusEvent);
     // manage releaase notes for prod
+    doProdReleaseNotes(deploymentStatusEvent);
   } else {
     core.info('😵You seem to be lost. Skipping release notes generation.');
   }
@@ -165,6 +166,7 @@ async function createOrUpdateDraftRelease(
       tag_name: `v-next`,
       name: `v-next`,
       body: releaseNotes,
+      target_commitish: deploymentStatusEvent.deployment.sha,
       draft: true,
       prerelease: true,
     });
@@ -175,6 +177,128 @@ async function createOrUpdateDraftRelease(
       core.info('❎ Failed to create Draft release!');
     }
   }
+}
+
+async function doProdReleaseNotes(
+  deploymentStatusEvent: DeploymentStatusEvent
+) {
+  // 1. Last prod release
+  const latestRelease = await octokit.rest.repos.getLatestRelease({
+    owner: owner,
+    repo: repo,
+  });
+  printReleaseInfo(latestRelease);
+
+  // 2. Current deployment event sha (prod now)
+  // From deploymentStatusEvent
+
+  // 3. Last successful beta deployment sha (dev now)
+  const lastSuccessfulDevDeploy = await getLastSuccessfulDevDeploymentSha(
+    owner,
+    repo
+  );
+
+  // we need this when there actually is a difference between what's going to prod here
+  // and what's in beta. If there are no differences, we don't need to do anything, and we can just release
+  // the draft as is.
+
+  // if there are commits, we need to create a new release with the new notes
+  // and update the draft release with the new notes. That has the new difference between beta and prod
+  const currentToBetaComparison = await octokit.rest.repos.compareCommits({
+    owner,
+    repo,
+    base: lastSuccessfulDevDeploy,
+    head: deploymentStatusEvent.deployment.sha,
+  });
+
+  if (currentToBetaComparison.data.status === 'identical') {
+    core.info(
+      'No differences between beta and prod. No need to create a new release.'
+    );
+
+    try {
+      const maybeDraft = await octokit.rest.repos.getReleaseByTag({
+        owner: owner,
+        repo: repo,
+        tag: `v-next`, // magic string
+      });
+
+      const date = new Date();
+      await octokit.rest.repos.updateRelease({
+        owner: owner,
+        repo: repo,
+        release_id: maybeDraft.data.id,
+        draft: false,
+        prerelease: false,
+        tag_name: `${date
+          .toISOString()
+          .replace(/[-:]/g, '')
+          .replace(/\.\d+Z$/, '')
+          .replace('T', '-')}`,
+        name: date.toLocaleString('en-US', {
+          timeZone: 'America/New_York',
+        }),
+        target_commitish: deploymentStatusEvent.deployment.sha,
+      });
+      return;
+    } catch (e) {
+      core.info('❎ Failed to update Draft release!');
+    }
+  } else {
+    core.info('🧈Differences between beta and prod. Creating a new release.');
+  }
+
+  // const maybeDraft = await octokit.rest.repos.getReleaseByTag({
+  //   owner: owner,
+  //   repo: repo,
+  //   tag: `v-next`,
+  // });
+
+  // get the last successful deployment
+  const deployments = await octokit.rest.repos.listDeployments({
+    owner: owner,
+    repo: repo,
+    per_page: 1,
+    environment: 'prod',
+  });
+
+  if (deployments.status === 200) {
+    core.info('✅ Found last successful deployment!');
+  } else {
+    core.info('❎ Failed to find last successful deployment!');
+  }
+}
+
+async function getLastSuccessfulDevDeploymentSha(
+  owner: string,
+  repo: string,
+  limit = 15
+): Promise<string> {
+  const deployments = await octokit.rest.repos.listDeployments({
+    owner,
+    repo,
+    environment: 'dev',
+    per_page: limit,
+  });
+
+  for (const deployment of deployments.data) {
+    const { data: statuses } = await octokit.rest.repos.listDeploymentStatuses({
+      owner,
+      repo,
+      deployment_id: deployment.id,
+      per_page: 5, // Most deployments don't have tons of statuses
+    });
+
+    const wasSuccessful = statuses.find((s) => s.state === 'success');
+
+    if (wasSuccessful) {
+      return deployment.sha;
+    }
+  }
+
+  throw new Error(
+    `No successful dev deployment found in last ${limit} deployments.`
+  );
 }
 
 function getEvent(): WebhookEvent {
