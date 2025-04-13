@@ -5,7 +5,6 @@ import {
   WebhookEvent,
   DeploymentEvent,
   DeploymentStatusEvent,
-  WebhookEventMap,
 } from '@octokit/webhooks-types';
 import { throttling } from '@octokit/plugin-throttling';
 import { createActionAuth } from '@octokit/auth-action';
@@ -14,7 +13,8 @@ import * as fs from 'fs';
 
 const MyOctokit = Octokit.plugin(restEndpointMethods, throttling);
 const octokit = new MyOctokit({
-  auth: process.env.GITHUB_TOKEN,
+  authStrategy: createActionAuth,
+  // auth: process.env.GITHUB_TOKEN,
   throttle: {
     onRateLimit: (retryAfter, options) => {
       core.warning(
@@ -36,136 +36,24 @@ const octokit = new MyOctokit({
 const [owner, repo] = 'kghafari/testbot'.split('/');
 
 export async function generateReleaseNotes() {
-  //const deploymentEvent = getEvent() as DeploymentEvent;
   const deploymentStatusEvent = getEvent() as DeploymentStatusEvent;
-
-  //printDeploymentEvent(deploymentEvent);
-  printDeploymentStatusEvent(deploymentStatusEvent);
 
   if (
     deploymentStatusEvent.deployment_status.state === 'success' &&
     deploymentStatusEvent.deployment.environment === 'dev'
   ) {
-    core.info('Dev deploy was successful!');
-    core.info(`
-      
-      =====DEV DEPLOY SUCCESS====
-      ID: ${deploymentStatusEvent.deployment.id}
-      Action: ${deploymentStatusEvent.action}
-      Workflow Html Url: ${deploymentStatusEvent.workflow.html_url}
-      Environment: ${deploymentStatusEvent.deployment.environment}
-      SHA: ${deploymentStatusEvent.deployment.sha}
-      Ref: ${deploymentStatusEvent.deployment.ref}
-      URL: ${deploymentStatusEvent.deployment.url}
-      `);
-
-    const latestRelease = await octokit.rest.repos.getLatestRelease({
-      owner: owner,
-      repo: repo,
-    });
-
-    core.info(` 
-      ====LAST PROD RELEASE INFO====
-      Name: ${latestRelease.data.name}
-      Tag Name: ${latestRelease.data.tag_name}
-      ID: ${latestRelease.data.id}
-      URL: ${latestRelease.data.html_url}
-      Created at: ${latestRelease.data.created_at}
-      SHA: ${latestRelease.data.target_commitish}
-      Tag: ${latestRelease.data.tag_name}
-      Draft: ${latestRelease.data.draft}
-      Prerelease: ${latestRelease.data.prerelease}
-      Assets: ${latestRelease.data.assets.length}
-      Assets URL: ${latestRelease.data.assets_url}
-      Body: ${latestRelease.data.body}
-      `);
-
-    const comparison = await octokit.rest.repos.compareCommits({
-      owner,
-      repo,
-      base: latestRelease.data.target_commitish,
-      head: deploymentStatusEvent.deployment.sha,
-    });
-
-    const commits = comparison.data.commits;
-    core.info(`🔢 Found ${commits.length} commits to process.`);
-
-    let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
-
-    for (const commit of commits) {
-      const commitSha = commit.sha;
-      const shortSha = commitSha.slice(0, 7);
-      const commitMessage = commit.commit.message.split('\n')[0];
-
-      try {
-        const prResponse =
-          await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
-            owner,
-            repo,
-            commit_sha: commitSha,
-          });
-
-        if (prResponse.data.length > 0) {
-          const pr = prResponse.data[0];
-          const prNum = pr.number;
-          const prTitle = pr.title;
-          const prAuthor = pr.user?.login || 'unknown';
-
-          releaseNotes += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
-        } else {
-          releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
-        }
-      } catch (err) {
-        core.warning(`⚠️ Failed to get PR for ${commitSha}: ${err}`);
-        releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
-      }
-    }
-    fs.writeFileSync('release_notes.md', releaseNotes);
-    core.info('📝 Release notes written to release_notes.md');
-    core.info(releaseNotes);
-
-    // Create or update the draft release
-    try {
-      core.info('✅ Checking for Draft release...');
-      const maybeDraft = await octokit.rest.repos.getReleaseByTag({
-        owner: owner,
-        repo: repo,
-        tag: `v-next`,
-      });
-
-      if (maybeDraft.status === 200) {
-        core.info('✅ Draft release 200!');
-      }
-
-      core.info('🛠 Draft Release Updating...');
-      const updatedDraft = await octokit.rest.repos.updateRelease({
-        owner: owner,
-        repo: repo,
-        release_id: maybeDraft.data.id,
-        body: releaseNotes,
-      });
-
-      if (updatedDraft.status === 200) {
-        core.info('🛠 UpdatedDraft 200!');
-      }
-    } catch (e) {
-      core.info('❎ Draft release does not exist, creating a new one...');
-      const newDraft = await octokit.rest.repos.createRelease({
-        owner: owner,
-        repo: repo,
-        tag_name: `v-next`,
-        name: `v-next`,
-        body: releaseNotes,
-        draft: true,
-        prerelease: true,
-      });
-
-      if (newDraft.status === 201) {
-        core.info('✅ Created NEW Draft release!');
-      } else {
-        core.info('❎ Failed to create Draft release!');
-      }
-    }
+    core.info('🧪Dev deploy was successful!');
+    printDeploymentStatusEvent(deploymentStatusEvent);
+    createOrUpdateDraftRelease(deploymentStatusEvent);
+  } else if (
+    deploymentStatusEvent.deployment_status.state === 'success' &&
+    deploymentStatusEvent.deployment.environment === 'prod'
+  ) {
+    core.info('🚀Prod deploy was successful!');
+    printDeploymentStatusEvent(deploymentStatusEvent);
+    // manage releaase notes for prod
+  } else {
+    core.info('😵You seem to be lost. Skipping release notes generation.');
   }
 
   // listDeployments();
@@ -191,6 +79,104 @@ export async function generateReleaseNotes() {
   // - tag, title, date, body, sha, url
 }
 
+async function createOrUpdateDraftRelease(
+  deploymentStatusEvent: DeploymentStatusEvent
+) {
+  const latestRelease = await octokit.rest.repos.getLatestRelease({
+    owner: owner,
+    repo: repo,
+  });
+  printReleaseInfo(latestRelease);
+
+  const comparison = await octokit.rest.repos.compareCommits({
+    owner,
+    repo,
+    base: latestRelease.data.target_commitish,
+    head: deploymentStatusEvent.deployment.sha,
+  });
+
+  const commits = comparison.data.commits;
+  core.info(`🔢 Found ${commits.length} commits to process.`);
+
+  let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
+  releaseNotes += `[Last Successful Beta Deploy ${deploymentStatusEvent.deployment.sha}](${deploymentStatusEvent.workflow.html_url})\n`;
+
+  for (const commit of commits) {
+    const commitSha = commit.sha;
+    const shortSha = commitSha.slice(0, 7);
+    const commitMessage = commit.commit.message.split('\n')[0];
+
+    try {
+      const prResponse =
+        await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
+          owner,
+          repo,
+          commit_sha: commitSha,
+        });
+
+      if (prResponse.data.length > 0) {
+        const pr = prResponse.data[0];
+        const prNum = pr.number;
+        const prTitle = pr.title;
+        const prAuthor = pr.user?.login || 'unknown';
+
+        releaseNotes += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
+      } else {
+        releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
+      }
+    } catch (err) {
+      core.warning(`⚠️ Failed to get PR for ${commitSha}: ${err}`);
+      releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
+    }
+  }
+  fs.writeFileSync('release_notes.md', releaseNotes);
+  core.info('📝 Release notes written to release_notes.md');
+  core.info(releaseNotes);
+
+  // Create or update the draft release
+  try {
+    core.info('✅ Checking for Draft release...');
+    const maybeDraft = await octokit.rest.repos.getReleaseByTag({
+      owner: owner,
+      repo: repo,
+      tag: `v-next`,
+    });
+
+    if (maybeDraft.status === 200) {
+      core.info('✅ Draft release 200!');
+    }
+
+    core.info('🛠 Draft Release Updating...');
+    const updatedDraft = await octokit.rest.repos.updateRelease({
+      owner: owner,
+      repo: repo,
+      release_id: maybeDraft.data.id,
+      body: releaseNotes,
+    });
+
+    if (updatedDraft.status === 200) {
+      core.info('🛠 UpdatedDraft 200!');
+    }
+  } catch (e) {
+    core.info('❎ Draft release does not exist, creating a new one...');
+    const newDraft = await octokit.rest.repos.createRelease({
+      owner: owner,
+      repo: repo,
+      tag_name: `v-next`,
+      name: `v-next`,
+      body: releaseNotes,
+      draft: true,
+      prerelease: true,
+    });
+
+    if (newDraft.status === 201) {
+      core.info('✅ Created NEW Draft release!');
+    } else {
+      core.info('❎ Failed to create Draft release!');
+    }
+  }
+}
+
 function getEvent(): WebhookEvent {
   const eventPath = process.env.GITHUB_EVENT_PATH;
   if (!eventPath) {
@@ -211,7 +197,11 @@ function printDeploymentStatusEvent(event: DeploymentStatusEvent) {
     ========= Deployment Status Details =========
     ID: ${event.deployment.id}
     Environment: ${event.deployment.environment}
-    STATE: ${event.deployment_status.state}
+    STATE: ${
+      event.deployment_status.state === 'success'
+        ? '✅ Success'
+        : event.deployment_status.state
+    }
     SHA: ${event.deployment.sha}
     Ref: ${event.deployment.ref}
     URL: ${event.deployment.url}
@@ -234,6 +224,24 @@ function printDeploymentEvent(event: DeploymentEvent) {
     Payload?: ${event.deployment.payload}
     ======================================
   `);
+}
+
+function printReleaseInfo(release: any) {
+  core.info(` 
+    ====LAST PROD RELEASE INFO====
+    Name: ${release.data.name}
+    Tag Name: ${release.data.tag_name}
+    ID: ${release.data.id}
+    URL: ${release.data.html_url}
+    Created at: ${release.data.created_at}
+    SHA: ${release.data.target_commitish}
+    Tag: ${release.data.tag_name}
+    Draft: ${release.data.draft}
+    Prerelease: ${release.data.prerelease}
+    Assets: ${release.data.assets.length}
+    Assets URL: ${release.data.assets_url}
+    Body: ${release.data.body}
+    `);
 }
 
 async function listDeployments() {
