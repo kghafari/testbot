@@ -1,5 +1,4 @@
-name: 🥈 Post Deploy Rev2
-
+run-name: 🔎Checking releases for ${{ github.event.deployment.environment }} - ${{ github.event.deployment_status.state }}
 on:
   deployment_status:
 
@@ -13,17 +12,8 @@ jobs:
     environment: dev
     runs-on: ubuntu-latest
     if: >
-      github.event.deployment.environment == 'dev' || 
-      github.event.deployment.environment == 'prod' &&
       github.event.deployment_status.state == 'success'
     steps:
-      - name: Set dynamic workflow name
-        run: |
-          if [ "${{ github.event.deployment.environment }}" = "prod" ]; then
-            echo "Workflow run name=🚀 Publish Release" >> $GITHUB_ENV
-          else
-            echo "Workflow run name=🧪 Working on Draft Release..." >> $GITHUB_ENV
-          fi
       - name: Checkout
         uses: actions/checkout@v4
 
