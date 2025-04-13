@@ -1,3 +1,4 @@
+name: 🔎 Manage Releases
 run-name: 🔎Checking releases for ${{ github.event.deployment.environment }} - ${{ github.event.deployment_status.state }}
 on:
   deployment_status:
