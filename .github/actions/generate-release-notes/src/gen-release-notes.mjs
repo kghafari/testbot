@@ -196,6 +196,7 @@ async function doProdReleaseNotes(deploymentStatusEvent) {
         }
         catch (e) {
             core.info('❎ Failed to update Draft release!');
+            core.info(e);
         }
     }
     else {

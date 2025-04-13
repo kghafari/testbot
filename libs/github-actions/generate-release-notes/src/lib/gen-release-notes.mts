@@ -243,6 +243,7 @@ async function doProdReleaseNotes(
       return;
     } catch (e) {
       core.info('❎ Failed to update Draft release!');
+      core.info(e);
     }
   } else {
     core.info('🧈Differences between beta and prod. Creating a new release.');
