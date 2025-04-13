@@ -119,6 +119,7 @@ async function createOrUpdateDraftRelease(
     if (updatedDraft.status === 200) {
       core.info('🛠 UpdatedDraft 200!');
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     core.info('❎ Draft release does not exist, creating a new one...');
     const newDraft = await octokit.rest.repos.createRelease({
@@ -229,6 +230,36 @@ async function doProdReleaseNotes(
       core.info(e);
     }
   } else {
+    // TODO: UPDATE THE EXISTING DRAFT RELEASE WITH THE NEW NOTES - THIS IS THE IMPORTANT PART
+    // NEED TO DIFF BETWEEN BETA AND PROD
+    // put this in a func later
+    const { data: releases } = await octokit.rest.repos.listReleases({
+      owner: owner,
+      repo: repo,
+      per_page: 20,
+    });
+
+    const maybeDraft = releases.find(
+      (release) => release.tag_name === 'v-next' && release.draft === true
+    );
+
+    let draftNotes = `# Changelog from ${lastSuccessfulDevDeploy} to ${deploymentStatusEvent.deployment.sha}\n\n`;
+    draftNotes += `[Last Successful Prod Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
+    draftNotes += await getReleaseNotesBody(
+      currentToBetaComparison.data.commits
+    );
+
+    await octokit.rest.repos.updateRelease({
+      owner: owner,
+      repo: repo,
+      release_id: maybeDraft.id,
+      body: draftNotes,
+      tag_name: latestRelease.data.tag_name,
+      name: latestRelease.data.name,
+      target_commitish: deploymentStatusEvent.deployment.sha,
+    });
+
+    // Create a new release with the new notes and release it
     let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
     releaseNotes += `[Last Successful Prod Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
     releaseNotes += await getReleaseNotesBody(
@@ -331,6 +362,7 @@ function printDeploymentStatusEvent(event: DeploymentStatusEvent) {
   `);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function printDeploymentEvent(event: DeploymentEvent) {
   core.info(`
     ========= Deployment Details =========
@@ -346,6 +378,7 @@ function printDeploymentEvent(event: DeploymentEvent) {
   `);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function printReleaseInfo(release: any) {
   core.info(` 
     ====LAST PROD RELEASE INFO====
@@ -363,6 +396,7 @@ function printReleaseInfo(release: any) {
     `);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function listDeployments() {
   const repos = await octokit.rest.repos.listDeployments({
     per_page: 10,
@@ -373,6 +407,7 @@ async function listDeployments() {
   core.info(JSON.stringify(repos.data, null, 2));
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getReleaseNotesBody(commits: any[]) {
   let releaseNotesBody = '';
   for (const commit of commits) {

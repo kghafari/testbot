@@ -181,28 +181,9 @@ async function doProdReleaseNotes(deploymentStatusEvent) {
         }
     }
     else {
-        // TODO: UPDATE THE EXISTING DRAFT RELEASE WITH THE NEW NOTES - THIS IS THE IMPORTANT PART
+        // Create a new release with the new notes
+        // TODO: UPDATE THE DRAFT RELEASE WITH THE NEW NOTES - THIS IS THE IMPORTANT PART
         // NEED TO DIFF BETWEEN BETA AND PROD
-        // put this in a func later
-        const { data: releases } = await octokit.rest.repos.listReleases({
-            owner: owner,
-            repo: repo,
-            per_page: 20,
-        });
-        const maybeDraft = releases.find((release) => release.tag_name === 'v-next' && release.draft === true);
-        let draftNotes = `# Changelog from ${lastSuccessfulDevDeploy} to ${deploymentStatusEvent.deployment.sha}\n\n`;
-        draftNotes += `[Last Successful Prod Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
-        draftNotes += await getReleaseNotesBody(currentToBetaComparison.data.commits);
-        await octokit.rest.repos.updateRelease({
-            owner: owner,
-            repo: repo,
-            release_id: maybeDraft.id,
-            body: draftNotes,
-            tag_name: latestRelease.data.tag_name,
-            name: latestRelease.data.name,
-            target_commitish: deploymentStatusEvent.deployment.sha,
-        });
-        // Create a new release with the new notes and release it
         let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
         releaseNotes += `[Last Successful Prod Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
         releaseNotes += await getReleaseNotesBody(currentToBetaComparison.data.commits);
