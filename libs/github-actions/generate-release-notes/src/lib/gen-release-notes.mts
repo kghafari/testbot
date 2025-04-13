@@ -56,7 +56,9 @@ export async function generateReleaseNotes() {
   } else {
     core.info('😵You seem to be lost. Skipping release notes generation.');
     core.info(
-      `Triggering Actor: ${deploymentStatusEvent.workflow_run.triggering_actor} 
+      `Triggering Actor: ${JSON.stringify(
+        deploymentStatusEvent.workflow_run.triggering_actor
+      )} 
       workflow url: ${deploymentStatusEvent.workflow_run.html_url}`
     );
     core.setFailed('This is not a deployment event! Whatever man!');
@@ -106,35 +108,35 @@ async function createOrUpdateDraftRelease(
 
   let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
   releaseNotes += `[Last Successful Beta Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
+  releaseNotes += getReleaseNotesBody(commits);
+  // for (const commit of commits) {
+  //   const commitSha = commit.sha;
+  //   const shortSha = commitSha.slice(0, 7);
+  //   const commitMessage = commit.commit.message.split('\n')[0];
 
-  for (const commit of commits) {
-    const commitSha = commit.sha;
-    const shortSha = commitSha.slice(0, 7);
-    const commitMessage = commit.commit.message.split('\n')[0];
+  //   try {
+  //     const prResponse =
+  //       await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
+  //         owner,
+  //         repo,
+  //         commit_sha: commitSha,
+  //       });
 
-    try {
-      const prResponse =
-        await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
-          owner,
-          repo,
-          commit_sha: commitSha,
-        });
+  //     if (prResponse.data.length > 0) {
+  //       const pr = prResponse.data[0];
+  //       const prNum = pr.number;
+  //       const prTitle = pr.title;
+  //       const prAuthor = pr.user?.login || 'unknown';
 
-      if (prResponse.data.length > 0) {
-        const pr = prResponse.data[0];
-        const prNum = pr.number;
-        const prTitle = pr.title;
-        const prAuthor = pr.user?.login || 'unknown';
-
-        releaseNotes += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
-      } else {
-        releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
-      }
-    } catch (err) {
-      core.warning(`⚠️ Failed to get PR for ${commitSha}: ${err}`);
-      releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
-    }
-  }
+  //       releaseNotes += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
+  //     } else {
+  //       releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
+  //     }
+  //   } catch (err) {
+  //     core.warning(`⚠️ Failed to get PR for ${commitSha}: ${err}`);
+  //     releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
+  //   }
+  // }
   fs.writeFileSync('release_notes.md', releaseNotes);
   core.info('📝 Release notes written to release_notes.md');
   core.info(releaseNotes);
@@ -251,6 +253,7 @@ async function doProdReleaseNotes(
         release_id: maybeDraft.id,
         draft: false,
         prerelease: false,
+        make_latest: 'true',
         tag_name: `${date
           .toISOString()
           .replace(/[-:]/g, '')
@@ -266,7 +269,31 @@ async function doProdReleaseNotes(
       core.info(e);
     }
   } else {
+    let releaseNotes = `# Changelog from ${latestRelease.data.name} to ${deploymentStatusEvent.deployment.sha}\n\n`;
+    releaseNotes += `[Last Successful Prod Deploy](${deploymentStatusEvent.workflow_run.html_url})\n`;
     core.info('🧈Differences between beta and prod. Creating a new release.');
+
+    const date = new Date();
+
+    const newRelease = await octokit.rest.repos.createRelease({
+      owner: owner,
+      repo: repo,
+      make_latest: 'true',
+      tag_name: `${date
+        .toISOString()
+        .replace(/[-:]/g, '')
+        .replace(/\.\d+Z$/, '')
+        .replace('T', '-')}`,
+      name: date.toLocaleString('en-US', {
+        timeZone: 'America/New_York',
+      }),
+      body: releaseNotes,
+      target_commitish: deploymentStatusEvent.deployment.sha,
+    });
+
+    core.info('✅ Created new release!');
+    core.info(`Release ID: ${newRelease.data.name}`);
+    core.info(`Release URL: ${newRelease.data.html_url}`);
   }
 
   // const maybeDraft = await octokit.rest.repos.getReleaseByTag({
@@ -402,6 +429,39 @@ async function listDeployments() {
   });
 
   core.info(JSON.stringify(repos.data, null, 2));
+}
+
+async function getReleaseNotesBody(commits: any[]) {
+  let releaseNotes: string;
+  for (const commit of commits) {
+    const commitSha = commit.sha;
+    const shortSha = commitSha.slice(0, 7);
+    const commitMessage = commit.commit.message.split('\n')[0];
+
+    try {
+      const prResponse =
+        await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
+          owner,
+          repo,
+          commit_sha: commitSha,
+        });
+
+      if (prResponse.data.length > 0) {
+        const pr = prResponse.data[0];
+        const prNum = pr.number;
+        const prTitle = pr.title;
+        const prAuthor = pr.user?.login || 'unknown';
+
+        releaseNotes += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
+      } else {
+        releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
+      }
+    } catch (err) {
+      core.warning(`⚠️ Failed to get PR for ${commitSha}: ${err}`);
+      releaseNotes += `- ${shortSha}: ${commitMessage}\n`;
+    }
+  }
+  return releaseNotes;
 }
 
 generateReleaseNotes();
