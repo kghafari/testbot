@@ -3,4 +3,4 @@ description: 'Says hello for now'
 inputs: {}
 runs:
   using: 'node20'
-  main: './lib/generate-release-notes.mjs'
+  main: './lib/generate-release-notes.js'
