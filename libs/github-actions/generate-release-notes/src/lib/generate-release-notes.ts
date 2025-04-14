@@ -83,8 +83,16 @@ export async function manageReleases() {
         .replace(/\.\d+Z$/, '')
         .replace('T', '-');
 
+      const { data: diff } = await octokit.rest.repos.compareCommits({
+        owner: owner,
+        repo: repo,
+        base: lastSuccessfulDevDeploymentSha,
+        head: currentDeploymentSha,
+      });
+
       let releaseBody = '=== CUSTOM PROD RELEASE BODY STARTS HERE ===\n';
-      releaseBody += 'Link to last successful deployment~~: ';
+      releaseBody += 'Link to last successful deployment~~: \n\n';
+      releaseBody += await buildReleaseNotesBody(diff.commits);
       await octokit.rest.repos.createRelease({
         owner: owner,
         repo: repo,
@@ -97,7 +105,7 @@ export async function manageReleases() {
 
       // Create a new draft release with CURRENT_WF_SHA..LAST_TO_BETA_SHA <- for maintaining draft
       // If there's no commits, the body will be empty (for now). That's fine and expected.
-      const { data: diff } = await octokit.rest.repos.compareCommits({
+      const { data: draftDiff } = await octokit.rest.repos.compareCommits({
         owner: owner,
         repo: repo,
         base: currentDeploymentSha,
@@ -106,7 +114,7 @@ export async function manageReleases() {
 
       let draftBody =
         '=== CUSTOM NONPROD BODY STARTS HERE (Generated on Prod release) ===\n';
-      draftBody += await buildReleaseNotesBody(diff.commits);
+      draftBody += await buildReleaseNotesBody(draftDiff.commits);
       const { data: newDraft } = await octokit.rest.repos.createRelease({
         owner: owner,
         repo: repo,
