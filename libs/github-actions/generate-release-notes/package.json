@@ -8,7 +8,11 @@
   "dependencies": {
     "tslib": "^2.3.0",
     "@actions/core": "^1.11.1",
-    "@octokit/action": "^7.0.2"
+    "@octokit/core": "6.1.5",
+    "@octokit/plugin-rest-endpoint-methods": "^14.0.0",
+    "@octokit/webhooks-types": "^7.6.1",
+    "@octokit/plugin-throttling": "^10.0.0",
+    "@octokit/auth-action": "^5.1.2"
   },
   "scripts": {
     "build:action": "tsc -p tsconfig.json"
