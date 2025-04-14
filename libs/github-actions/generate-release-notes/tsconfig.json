@@ -3,13 +3,13 @@
   "compilerOptions": {
     "module": "Node16",
     "target": "ES2020",
-    "outDir": "../../../.github/actions/generate-release-notes/src",
-    "rootDir": "src/lib",
+    "outDir": "../../../.github/actions/generate-release-notes",
+    "rootDir": "src",
     "moduleResolution": "Node16",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "include": ["src/lib/gen-release-notes.mts"],
+  "include": ["src/lib/gen*"],
   "exclude": ["**/*.spec.ts", "node_modules"]
 }
