@@ -9,22 +9,15 @@ import { throttling } from '@octokit/plugin-throttling';
 import { createActionAuth } from '@octokit/auth-action';
 import * as fs from 'fs';
 
-// Things to pass as input:
-// - owner
-// - repo
-// - draft release name
-const ORG_AND_REPO = 'kghafari/testbot'; // TODO: replace with input
-const BETA_ENV = 'dev'; // TODO: replace with input
-const PROD_ENV = 'prod'; // TODO: replace with input
-const RELEASE_NAME = new Date().toISOString(); // TODO: replace with input
-const DRAFT_NAME = 'v-next'; // TODO: replace with input
+const GITHUB_REPOSITORY = core.getInput('GITHUB_REPOSITORY'); // TODO: replace with input
+const BETA_ENV = core.getInput('BETA_ENV'); // TODO: replace with input
+const PROD_ENV = core.getInput('PROD_ENV'); // TODO: replace with input
+const DRAFT_NAME = core.getInput('DRAFT_NAME'); // TODO: replace with input
 
 const octokit = configureOctokit();
-const [owner, repo] = ORG_AND_REPO.split('/'); // configure these to be passed in as inputs
+const [owner, repo] = GITHUB_REPOSITORY.split('/'); // configure these to be passed in as inputs
 
 export async function manageReleases() {
-  // no matter what -
-
   // 0. Clear the draft release. We're going to regenerate it to keep life simple
   clearDraftRelease();
 
@@ -55,7 +48,6 @@ export async function manageReleases() {
     // CURRENT_WF_SHA..LAST_TO_BETA_SHA <- for maintaining draft
     if (deploymentStatusEvent.deployment.environment === BETA_ENV) {
       core.info('🎊 Push to beta successful... Creating draft release...');
-      // Create the new draft release
       const { data: diff } =
         await octokit.rest.repos.compareCommitsWithBasehead({
           owner: owner,
@@ -81,7 +73,6 @@ export async function manageReleases() {
       core.info(`Draft release created: ${draftRelease.data.html_url}`);
     } else if (deploymentStatusEvent.deployment.environment === PROD_ENV) {
       core.info('🎊 Push to prod successful... Creating release...');
-      // Create the PROD release
       const releaseName = new Date()
         .toISOString()
         .replace(/[-:]/g, '')
@@ -91,11 +82,10 @@ export async function manageReleases() {
       const { data: diff } = await octokit.rest.repos.compareCommits({
         owner: owner,
         repo: repo,
-        base: lastSuccessfulDevDeploymentSha,
+        base: latestReleaseCommitish,
         head: currentDeploymentSha,
       });
 
-      core.info("🤔 Let's keep our draft up to date...");
       let releaseBody = '=== CUSTOM PROD RELEASE BODY STARTS HERE ===\n';
       releaseBody += 'Link to last successful deployment~~: \n\n';
       releaseBody += await buildReleaseNotesBody(diff.commits);
@@ -111,13 +101,15 @@ export async function manageReleases() {
 
       // Create a new draft release with CURRENT_WF_SHA..LAST_TO_BETA_SHA <- for maintaining draft
       // If there's no commits, the body will be empty (for now). That's fine and expected.
+      // egh idk if this still right uhhhh we want to look backwards from the last successful beta deployment sha to the current deployment sha
       const { data: draftDiff } = await octokit.rest.repos.compareCommits({
         owner: owner,
         repo: repo,
-        base: currentDeploymentSha,
-        head: lastSuccessfulDevDeploymentSha,
+        base: lastSuccessfulDevDeploymentSha,
+        head: currentDeploymentSha,
       });
 
+      core.info("🤔 Let's keep our draft up to date...");
       let draftBody =
         '=== CUSTOM NONPROD BODY STARTS HERE (Generated on Prod release) ===\n';
       draftBody += await buildReleaseNotesBody(draftDiff.commits);

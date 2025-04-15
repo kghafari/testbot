@@ -1,6 +1,18 @@
 name: 'Generate Release Notes'
 description: 'Generates and maintains release notes for your project.'
-inputs: {}
+inputs:
+  GITHUB_REPOSITORY:
+    description: 'The organization and repository name in the format "owner/repo".'
+    required: true
+  BETA_ENV:
+    description: 'The environment before prod. i.e beta, staging, preprod, etc.'
+    required: true
+  PROD_ENV:
+    description: 'The live environment. i.e prod, live, etc.'
+    required: true
+  DRAFT_NAME:
+    description: 'The name of the draft release.'
+    required: true
 runs:
   using: 'node20'
   main: './lib/generate-release-notes.js'

@@ -28,5 +28,10 @@ jobs:
 
       - name: Run local action
         uses: ./.github/actions/generate-release-notes
+        with:
+          GITHUB_REPOSITORY: ${{ github.event.repository.full_name }}
+          BETA_ENV: 'beta'
+          PROD_ENV: 'prod'
+          DRAFT_NAME: 'v-next'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
