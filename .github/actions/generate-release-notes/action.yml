@@ -1,5 +1,5 @@
 name: 'Generate Release Notes'
-description: 'Says hello for now'
+description: 'Generates and maintains release notes for your project.'
 inputs: {}
 runs:
   using: 'node20'

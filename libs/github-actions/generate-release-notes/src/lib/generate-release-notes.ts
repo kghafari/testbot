@@ -54,6 +54,7 @@ export async function manageReleases() {
     // LAST_RELEASE..CURRENT_WF_SHA <- For prod release
     // CURRENT_WF_SHA..LAST_TO_BETA_SHA <- for maintaining draft
     if (deploymentStatusEvent.deployment.environment === BETA_ENV) {
+      core.info('🎊 Push to beta successful... Creating draft release...');
       // Create the new draft release
       const { data: diff } = await octokit.rest.repos.compareCommits({
         owner: owner,
@@ -64,7 +65,7 @@ export async function manageReleases() {
 
       let draftBody = '=== CUSTOM NONPROD BODY STARTS HERE ===\n';
       draftBody += buildReleaseNotesBody(diff.commits);
-      await octokit.rest.repos.createRelease({
+      const draftRelease = await octokit.rest.repos.createRelease({
         owner: owner,
         repo: repo,
         tag_name: DRAFT_NAME,
@@ -75,7 +76,9 @@ export async function manageReleases() {
         prerelease: true,
         target_commitish: currentDeploymentSha,
       });
+      core.info(`Draft release created: ${draftRelease.data.html_url}`);
     } else if (deploymentStatusEvent.deployment.environment === PROD_ENV) {
+      core.info('🎊 Push to prod successful... Creating release...');
       // Create the PROD release
       const releaseName = new Date()
         .toISOString()
@@ -90,6 +93,7 @@ export async function manageReleases() {
         head: currentDeploymentSha,
       });
 
+      core.info("🤔 Let's keep our draft up to date...");
       let releaseBody = '=== CUSTOM PROD RELEASE BODY STARTS HERE ===\n';
       releaseBody += 'Link to last successful deployment~~: \n\n';
       releaseBody += await buildReleaseNotesBody(diff.commits);
@@ -265,8 +269,10 @@ async function getLastSuccessfulDeploymentSha(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function buildReleaseNotesBody(commits: any[]) {
+  core.info('📝Building release notes body...');
   let releaseNotesBody = '';
   if (commits.length === 0) {
+    core.info('No commits found!');
     return '';
   }
 
@@ -298,5 +304,6 @@ async function buildReleaseNotesBody(commits: any[]) {
       releaseNotesBody += `- ${shortSha}: ${commitMessage}\n`;
     }
   }
+  core.info('📝Release notes body built!');
   return releaseNotesBody;
 }
