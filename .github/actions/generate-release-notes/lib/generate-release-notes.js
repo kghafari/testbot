@@ -46,7 +46,7 @@ export async function manageReleases() {
                 head: currentDeploymentSha,
             });
             let draftBody = '=== CUSTOM NONPROD BODY STARTS HERE ===\n';
-            draftBody += buildReleaseNotesBody(diff.commits);
+            draftBody += await buildReleaseNotesBody(diff.commits);
             const draftRelease = await octokit.rest.repos.createRelease({
                 owner: owner,
                 repo: repo,
