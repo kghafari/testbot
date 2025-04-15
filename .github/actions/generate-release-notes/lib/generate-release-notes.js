@@ -45,6 +45,8 @@ export async function manageReleases() {
                 base: latestReleaseCommitish,
                 head: currentDeploymentSha,
             });
+            core.info('prodRelease..currentDeploymentSha diff');
+            core.info(JSON.stringify(diff.commits));
             let draftBody = '=== CUSTOM NONPROD BODY STARTS HERE ===\n';
             draftBody += await buildReleaseNotesBody(diff.commits);
             const draftRelease = await octokit.rest.repos.createRelease({
@@ -198,6 +200,9 @@ async function getLastSuccessfulDeploymentSha(owner, repo, env, limit = 15) {
         URL: ${deployment.url}
         Environment: ${deployment.environment}
         ID: ${deployment.id}
+        Deploy URL: ${wasSuccessful.deployment_url}
+        Log URL: ${wasSuccessful.log_url}
+        Target URL: ${wasSuccessful.target_url}
         `);
             return deployment.sha;
         }
@@ -219,7 +224,8 @@ async function getLastSuccessfulDeploymentSha(owner, repo, env, limit = 15) {
 // }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function buildReleaseNotesBody(commits) {
-    core.info('📝Building release notes body...');
+    core.info('📝Building release notes body for...');
+    core.info(JSON.stringify(commits));
     let releaseNotesBody = '';
     if (commits.length === 0) {
         core.info('No commits found!');
