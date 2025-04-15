@@ -56,14 +56,15 @@ export async function manageReleases() {
     if (deploymentStatusEvent.deployment.environment === BETA_ENV) {
       core.info('🎊 Push to beta successful... Creating draft release...');
       // Create the new draft release
-      const { data: diff } = await octokit.rest.repos.compareCommits({
-        owner: owner,
-        repo: repo,
-        base: latestReleaseCommitish,
-        head: currentDeploymentSha,
-      });
+      const { data: diff } =
+        await octokit.rest.repos.compareCommitsWithBasehead({
+          owner: owner,
+          repo: repo,
+          basehead: `${latestReleaseCommitish}...${currentDeploymentSha}`,
+        });
+
       core.info('prodRelease..currentDeploymentSha diff');
-      core.info(JSON.stringify(diff.commits));
+
       let draftBody = '=== CUSTOM NONPROD BODY STARTS HERE ===\n';
       draftBody += await buildReleaseNotesBody(diff.commits);
       const draftRelease = await octokit.rest.repos.createRelease({
@@ -271,10 +272,16 @@ async function getLastSuccessfulDeploymentSha(
 //   return releaseNotes;
 // }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function buildReleaseNotesBody(commits: any[]) {
+interface Commit {
+  sha: string;
+  commit: {
+    message: string;
+    tree: object;
+  };
+}
+
+async function buildReleaseNotesBody(commits: Commit[]) {
   core.info('📝Building release notes body for...');
-  core.info(JSON.stringify(commits));
   let releaseNotesBody = '';
   if (commits.length === 0) {
     core.info('No commits found!');
@@ -285,21 +292,21 @@ async function buildReleaseNotesBody(commits: any[]) {
     const commitSha = commit.sha;
     const shortSha = commitSha.slice(0, 7);
     const commitMessage = commit.commit.message.split('\n')[0];
-
+    core.info(`checking ${shortSha}:${commit} for PR...`);
     try {
-      const prResponse =
+      const { data: prResponse } =
         await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
           owner,
           repo,
           commit_sha: commitSha,
         });
 
-      if (prResponse.data.length > 0) {
-        const pr = prResponse.data[0];
+      if (prResponse.length > 0) {
+        const pr = prResponse[0];
         const prNum = pr.number;
         const prTitle = pr.title;
         const prAuthor = pr.user?.login || 'unknown';
-
+        core.info(`Found PR for commit ${commitSha}: ${pr.title}`);
         releaseNotesBody += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
       } else {
         releaseNotesBody += `- ${shortSha}: ${commitMessage}\n`;
