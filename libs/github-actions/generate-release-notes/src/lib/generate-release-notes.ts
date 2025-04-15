@@ -254,7 +254,7 @@ async function getLastSuccessfulDeploymentSha(
   }
 
   throw new Error(
-    `No successful dev deployment found in last ${limit} deployments.`
+    `No successful dev deployment found in last ${limit} deployments for env ${env}.`
   );
 }
 
