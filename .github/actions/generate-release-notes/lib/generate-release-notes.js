@@ -157,7 +157,9 @@ async function clearDraftRelease() {
     const draftRelease = releases
         .sort((a, b) => b.created_at.localeCompare(a.created_at))
         .find((release) => release.tag_name === DRAFT_NAME && release.draft === true);
-    if (draftRelease) {
+    if (draftRelease &&
+        draftRelease.name === DRAFT_NAME &&
+        draftRelease.draft === true) {
         core.info(`🙋‍♀️ Removing Old Draft Release: ${draftRelease.name}... `);
         await octokit.rest.repos.deleteRelease({
             owner: owner,
@@ -170,6 +172,7 @@ async function clearDraftRelease() {
     }
 }
 async function getLastSuccessfulDeploymentSha(owner, repo, env, limit = 15) {
+    core.info(`🔍 Finding last successful deployment for ${env}...`);
     const deployments = (await octokit.rest.repos.listDeployments({
         owner,
         repo,
@@ -177,12 +180,15 @@ async function getLastSuccessfulDeploymentSha(owner, repo, env, limit = 15) {
         per_page: limit,
     })).data.sort((a, b) => b.created_at.localeCompare(a.created_at));
     for (const deployment of deployments) {
+        core.info(`Checking deployment ${deployment.id}...`);
+        core.info(`Timestamp: ${deployment.created_at}`);
         const { data: statuses } = await octokit.rest.repos.listDeploymentStatuses({
             owner,
             repo,
             deployment_id: deployment.id,
             per_page: 5, // Most deployments don't have tons of statuses
         });
+        core.info(`Statuses: ${statuses.length}`);
         const wasSuccessful = statuses.find((s) => s.state === 'success');
         statuses.find((s) => s.state === 'success');
         if (wasSuccessful) {
