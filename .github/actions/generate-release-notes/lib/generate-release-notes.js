@@ -11,8 +11,14 @@ const DRAFT_NAME = core.getInput('DRAFT_NAME'); // TODO: replace with input
 const octokit = configureOctokit();
 const [owner, repo] = GITHUB_REPOSITORY.split('/'); // configure these to be passed in as inputs
 export async function manageReleases() {
+    // -1. Check inputs
+    core.info(`GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}`);
+    core.info(`BETA_ENV: ${BETA_ENV}`);
+    core.info(`PROD_ENV: ${PROD_ENV}`);
+    core.info(`DRAFT_NAME: ${DRAFT_NAME}`);
+    core.info(`Current ENV: ${process.env.GITHUB_ENV}`);
     // 0. Clear the draft release. We're going to regenerate it to keep life simple
-    clearDraftRelease();
+    await clearDraftRelease();
     // 1. Get the current workflow deploy sha
     const deploymentStatusEvent = getEvent();
     const currentDeploymentSha = deploymentStatusEvent.deployment.sha;
@@ -106,7 +112,8 @@ export async function manageReleases() {
     }
     catch (error) {
         core.error('❌ An error occurred:');
-        core.error(error.message);
+        core.error(error);
+        core.error(JSON.stringify(error));
         core.setFailed(error.message);
     }
 }
@@ -148,7 +155,7 @@ function getEvent() {
 }
 // TODO: replace 'v-next' with input
 async function clearDraftRelease() {
-    core.info('✅ Checking for Draft release...');
+    core.info(`✅ Checking ${GITHUB_REPOSITORY} for Draft release...`);
     const { data: releases } = await octokit.rest.repos.listReleases({
         owner: owner,
         repo: repo,
@@ -204,7 +211,7 @@ async function getLastSuccessfulDeploymentSha(owner, repo, env, limit = 15) {
             return deployment.sha;
         }
     }
-    throw new Error(`No successful dev deployment found in last ${limit} deployments.`);
+    throw new Error(`No successful dev deployment found in last ${limit} deployments for env ${env}.`);
 }
 async function buildReleaseNotesBody(commits) {
     core.info('📝Building release notes body for...');
