@@ -135,8 +135,8 @@ export async function manageReleases() {
       const { data: draftDiff } = await octokit.rest.repos.compareCommits({
         owner: owner,
         repo: repo,
-        base: latestReleaseResponse.data.target_commitish,
-        head: currentDeploymentSha,
+        base: lastSuccessfulDevDeploymentSha,
+        head: latestReleaseResponse.data.target_commitish,
       });
 
       core.info("🤔 Let's keep our draft up to date...");
