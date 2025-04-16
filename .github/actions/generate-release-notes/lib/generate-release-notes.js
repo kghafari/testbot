@@ -102,13 +102,18 @@ export async function manageReleases() {
                 generate_release_notes: true, // i dont htink this works
                 target_commitish: currentDeploymentSha,
             });
+            // LOL we have to get latest again
+            const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
+                owner: owner,
+                repo: repo,
+            }); // last release to last beta sha
             // Create a new draft release with CURRENT_WF_SHA..LAST_TO_BETA_SHA <- for maintaining draft
             // If there's no commits, the body will be empty (for now). That's fine and expected.
             // egh idk if this still right uhhhh we want to look backwards from the last successful beta deployment sha to the current deployment sha
             const { data: draftDiff } = await octokit.rest.repos.compareCommits({
                 owner: owner,
                 repo: repo,
-                base: lastSuccessfulDevDeploymentSha,
+                base: latestReleaseResponse.data.target_commitish,
                 head: currentDeploymentSha,
             });
             core.info("🤔 Let's keep our draft up to date...");
