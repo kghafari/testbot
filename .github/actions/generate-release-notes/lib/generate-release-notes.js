@@ -22,27 +22,30 @@ export async function manageReleases() {
     // 1. Get the current workflow deploy sha
     const deploymentStatusEvent = getEvent();
     const currentDeploymentSha = deploymentStatusEvent.deployment.sha;
-    // 2. Get the last PROD release commitish
+    // 2. Find the last successful beta deployment sha (?)
+    let lastSuccessfulDevDeploymentSha;
+    try {
+        core.info(`🔍 Finding last successful deployment for ${BETA_ENV}...`);
+        lastSuccessfulDevDeploymentSha = await getLastSuccessfulDeploymentSha(owner, repo, BETA_ENV);
+        core.info(`found: ${lastSuccessfulDevDeploymentSha}`);
+    }
+    catch {
+        core.setFailed(`No successful ${BETA_ENV} deployments found 😵💫`);
+    }
+    // 3. Get the last PROD release commitish
     let latestReleaseCommitish;
     try {
+        core.info(`🔍 Finding latest release commitish...`);
         const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
             owner: owner,
             repo: repo,
         });
         latestReleaseCommitish = latestReleaseResponse.data.target_commitish;
+        core.info(`found: ${latestReleaseCommitish}`);
     }
     catch {
-        core.info('No latest release found. Using current deployment sha...');
-        latestReleaseCommitish = currentDeploymentSha;
-    }
-    // 3. Find the last successful beta deployment sha (?)
-    let lastSuccessfulDevDeploymentSha;
-    try {
-        lastSuccessfulDevDeploymentSha = await getLastSuccessfulDeploymentSha(owner, repo, BETA_ENV);
-    }
-    catch {
-        core.info('No last successful beta deployment found. Using current deployment sha...');
-        lastSuccessfulDevDeploymentSha = currentDeploymentSha;
+        latestReleaseCommitish = lastSuccessfulDevDeploymentSha;
+        core.info(`No latest release found. Using lastSuccessfulDevDeploymentSha sha: ${latestReleaseCommitish}`);
     }
     try {
         // LAST_RELEASE..CURRENT_WF_SHA <- For prod release
@@ -55,6 +58,9 @@ export async function manageReleases() {
                 basehead: `${latestReleaseCommitish}...${currentDeploymentSha}`,
             });
             core.info('prodRelease..currentDeploymentSha diff');
+            diff.commits.forEach((commit) => {
+                core.info(`${commit.sha} : ${commit.commit.message}`);
+            });
             let draftBody = '=== CUSTOM NONPROD BODY STARTS HERE ===\n';
             draftBody += await buildReleaseNotesBody(diff.commits);
             const draftRelease = await octokit.rest.repos.createRelease({

@@ -35,11 +35,13 @@ export async function manageReleases() {
   // 2. Find the last successful beta deployment sha (?)
   let lastSuccessfulDevDeploymentSha: string;
   try {
+    core.info(`🔍 Finding last successful deployment for ${BETA_ENV}...`);
     lastSuccessfulDevDeploymentSha = await getLastSuccessfulDeploymentSha(
       owner,
       repo,
       BETA_ENV
     );
+    core.info(`found: ${lastSuccessfulDevDeploymentSha}`);
   } catch {
     core.setFailed(`No successful ${BETA_ENV} deployments found 😵💫`);
   }
@@ -47,14 +49,18 @@ export async function manageReleases() {
   // 3. Get the last PROD release commitish
   let latestReleaseCommitish: string;
   try {
+    core.info(`🔍 Finding latest release commitish...`);
     const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
       owner: owner,
       repo: repo,
     });
     latestReleaseCommitish = latestReleaseResponse.data.target_commitish;
+    core.info(`found: ${latestReleaseCommitish}`);
   } catch {
-    core.info('No latest release found. Using current deployment sha...');
     latestReleaseCommitish = lastSuccessfulDevDeploymentSha;
+    core.info(
+      `No latest release found. Using lastSuccessfulDevDeploymentSha sha: ${latestReleaseCommitish}`
+    );
   }
 
   try {
@@ -70,6 +76,9 @@ export async function manageReleases() {
         });
 
       core.info('prodRelease..currentDeploymentSha diff');
+      diff.commits.forEach((commit) => {
+        core.info(`${commit.sha} : ${commit.commit.message}`);
+      });
 
       let draftBody = '=== CUSTOM NONPROD BODY STARTS HERE ===\n';
       draftBody += await buildReleaseNotesBody(diff.commits);
