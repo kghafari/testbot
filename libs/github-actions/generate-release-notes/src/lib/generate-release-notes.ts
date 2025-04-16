@@ -300,7 +300,7 @@ async function buildReleaseNotesBody(commits: Commit[]) {
     const commitSha = commit.sha;
     const shortSha = commitSha.slice(0, 7);
     const commitMessage = commit.commit.message.split('\n')[0];
-    core.info(`checking ${shortSha}:${commit} for PR...`);
+    core.info(`checking ${shortSha} for PR...`);
     try {
       const { data: prResponse } =
         await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
@@ -317,6 +317,7 @@ async function buildReleaseNotesBody(commits: Commit[]) {
         core.info(`Found PR for commit ${commitSha}: ${pr.title}`);
         releaseNotesBody += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
       } else {
+        core.info(`No PR found for commit ${commitSha}`);
         releaseNotesBody += `- ${shortSha}: ${commitMessage}\n`;
       }
     } catch (err) {
