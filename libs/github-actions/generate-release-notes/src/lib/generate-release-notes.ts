@@ -103,14 +103,15 @@ export async function manageReleases() {
         .replace(/\.\d+Z$/, '')
         .replace('T', '-');
 
-      const { data: diff } = await octokit.rest.repos.compareCommits({
-        owner: owner,
-        repo: repo,
-        base: latestReleaseCommitish,
-        head: currentDeploymentSha,
-      });
+      const { data: diff } =
+        await octokit.rest.repos.compareCommitsWithBasehead({
+          owner: owner,
+          repo: repo,
+          basehead: `${latestReleaseCommitish}...${currentDeploymentSha}`,
+        });
 
       let releaseBody = '=== CUSTOM PROD RELEASE BODY STARTS HERE ===\n';
+      releaseBody += `Comparing: ${latestReleaseCommitish}..${currentDeploymentSha}\n`;
       releaseBody += 'Link to last successful deployment~~: \n\n';
       releaseBody += await buildReleaseNotesBody(diff.commits);
       await octokit.rest.repos.createRelease({
@@ -132,16 +133,17 @@ export async function manageReleases() {
       // Create a new draft release with CURRENT_WF_SHA..LAST_TO_BETA_SHA <- for maintaining draft
       // If there's no commits, the body will be empty (for now). That's fine and expected.
       // egh idk if this still right uhhhh we want to look backwards from the last successful beta deployment sha to the current deployment sha
-      const { data: draftDiff } = await octokit.rest.repos.compareCommits({
-        owner: owner,
-        repo: repo,
-        base: lastSuccessfulDevDeploymentSha,
-        head: latestReleaseResponse.data.target_commitish,
-      });
+      const { data: draftDiff } =
+        await octokit.rest.repos.compareCommitsWithBasehead({
+          owner: owner,
+          repo: repo,
+          basehead: `${lastSuccessfulDevDeploymentSha}...${latestReleaseResponse.data.target_commitish}`,
+        });
 
       core.info("🤔 Let's keep our draft up to date...");
       let draftBody =
         '=== CUSTOM NONPROD BODY STARTS HERE (Generated on Prod release) ===\n';
+      draftBody += `Comparing: ${lastSuccessfulDevDeploymentSha}..${latestReleaseResponse.data.target_commitish}\n`;
       draftBody += await buildReleaseNotesBody(draftDiff.commits);
       const { data: newDraft } = await octokit.rest.repos.createRelease({
         owner: owner,
