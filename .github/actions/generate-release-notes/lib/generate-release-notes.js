@@ -99,10 +99,10 @@ export async function manageReleases() {
             const { data: draftDiff } = await octokit.rest.repos.compareCommitsWithBasehead({
                 owner: owner,
                 repo: repo,
-                basehead: `${lastSuccessfulNonprodDeploymentSha}...${latestReleaseResponse.data.target_commitish}`,
+                basehead: `${latestReleaseResponse.data.target_commitish}...${lastSuccessfulNonprodDeploymentSha}`,
             });
-            core.info('Comparing from lastSuccessfulNonprodDeploymentSha to...current latestReleaseResponse\n');
-            core.info(`${lastSuccessfulNonprodDeploymentSha}...${latestReleaseResponse.data.target_commitish}`);
+            core.info('Comparing from latestReleaseResponse to...current lastSuccessfulNonprodDeploymentSha\n');
+            core.info(`${latestReleaseResponse.data.target_commitish}...${lastSuccessfulNonprodDeploymentSha}`);
             for (const commit of diff.commits) {
                 core.info(JSON.stringify(commit, null, 2));
             }
