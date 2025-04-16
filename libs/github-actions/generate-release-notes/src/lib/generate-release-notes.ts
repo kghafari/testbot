@@ -18,15 +18,6 @@ const octokit = configureOctokit();
 const [owner, repo] = GITHUB_REPOSITORY.split('/'); // configure these to be passed in as inputs
 
 export async function manageReleases() {
-  // -2. Testing file write
-  octokit.rest.repos.createOrUpdateFileContents({
-    owner: owner,
-    repo: repo,
-    path: './test.txt',
-    message: 'Hello World!',
-    content: 'Hello world content!',
-  });
-
   // -1. Check inputs
   core.info(`GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}`);
   core.info(`BETA_ENV: ${BETA_ENV}`);
@@ -231,7 +222,7 @@ function getEvent(): WebhookEvent {
 
 // TODO: replace 'v-next' with input
 async function clearDraftRelease() {
-  core.info(`✅ Checking ${GITHUB_REPOSITORY} for Draft release...`);
+  core.info(`✅ Checking ${GITHUB_REPOSITORY} for draft release...`);
   const { data: releases } = await octokit.rest.repos.listReleases({
     owner: owner,
     repo: repo,
