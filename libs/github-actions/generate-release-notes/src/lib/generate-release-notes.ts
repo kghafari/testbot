@@ -32,7 +32,19 @@ export async function manageReleases() {
   const deploymentStatusEvent = getEvent() as DeploymentStatusEvent;
   const currentDeploymentSha = deploymentStatusEvent.deployment.sha;
 
-  // 2. Get the last PROD release commitish
+  // 2. Find the last successful beta deployment sha (?)
+  let lastSuccessfulDevDeploymentSha: string;
+  try {
+    lastSuccessfulDevDeploymentSha = await getLastSuccessfulDeploymentSha(
+      owner,
+      repo,
+      BETA_ENV
+    );
+  } catch {
+    core.setFailed(`No successful ${BETA_ENV} deployments found 😵💫`);
+  }
+
+  // 3. Get the last PROD release commitish
   let latestReleaseCommitish: string;
   try {
     const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
@@ -42,22 +54,7 @@ export async function manageReleases() {
     latestReleaseCommitish = latestReleaseResponse.data.target_commitish;
   } catch {
     core.info('No latest release found. Using current deployment sha...');
-    latestReleaseCommitish = currentDeploymentSha;
-  }
-
-  // 3. Find the last successful beta deployment sha (?)
-  let lastSuccessfulDevDeploymentSha: string;
-  try {
-    lastSuccessfulDevDeploymentSha = await getLastSuccessfulDeploymentSha(
-      owner,
-      repo,
-      BETA_ENV
-    );
-  } catch {
-    core.info(
-      'No last successful beta deployment found. Using current deployment sha...'
-    );
-    lastSuccessfulDevDeploymentSha = currentDeploymentSha;
+    latestReleaseCommitish = lastSuccessfulDevDeploymentSha;
   }
 
   try {
