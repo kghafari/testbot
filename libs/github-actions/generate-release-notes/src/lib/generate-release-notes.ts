@@ -76,6 +76,7 @@ export async function manageReleases() {
         });
 
       core.info('prodRelease..currentDeploymentSha diff');
+      core.info(`${latestReleaseCommitish}...${currentDeploymentSha}`);
       diff.commits.forEach((commit) => {
         core.info(`${commit.sha} : ${commit.commit.message}`);
       });
