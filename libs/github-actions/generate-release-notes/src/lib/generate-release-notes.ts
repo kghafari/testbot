@@ -18,6 +18,15 @@ const octokit = configureOctokit();
 const [owner, repo] = GITHUB_REPOSITORY.split('/'); // configure these to be passed in as inputs
 
 export async function manageReleases() {
+  // -2. Testing file write
+  octokit.rest.repos.createOrUpdateFileContents({
+    owner: owner,
+    repo: repo,
+    path: './test.txt',
+    message: 'Hello World!',
+    content: 'Hello world content!',
+  });
+
   // -1. Check inputs
   core.info(`GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}`);
   core.info(`BETA_ENV: ${BETA_ENV}`);
@@ -33,41 +42,23 @@ export async function manageReleases() {
   const currentDeploymentSha = deploymentStatusEvent.deployment.sha;
 
   // 2. Find the last successful beta deployment sha (?)
-  let lastSuccessfulDevDeploymentSha: string;
-  try {
-    core.info(`🔍 Finding last successful deployment for ${BETA_ENV}...`);
-    lastSuccessfulDevDeploymentSha = await getLastSuccessfulDeploymentSha(
-      owner,
-      repo,
-      BETA_ENV
-    );
-    core.info(`found: ${lastSuccessfulDevDeploymentSha}`);
-  } catch {
-    core.setFailed(`No successful ${BETA_ENV} deployments found 😵💫`);
-  }
+  const lastSuccessfulNonprodDeploymentSha =
+    await getLastSuccessfulDeploymentSha(owner, repo, BETA_ENV);
 
   // 3. Get the last PROD release commitish
-  let latestReleaseCommitish: string;
-  try {
-    core.info(`🔍 Finding latest release commitish...`);
-    const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
-      owner: owner,
-      repo: repo,
-    });
-    latestReleaseCommitish = latestReleaseResponse.data.target_commitish;
-    core.info(`found: ${latestReleaseCommitish}`);
-  } catch {
-    latestReleaseCommitish = lastSuccessfulDevDeploymentSha;
-    core.info(
-      `No latest release found. Using lastSuccessfulDevDeploymentSha sha: ${latestReleaseCommitish}`
-    );
-  }
+  const latestReleaseCommitish = await getLatestReleaseCommitish(
+    owner,
+    repo,
+    lastSuccessfulNonprodDeploymentSha
+  );
 
   try {
     // LAST_RELEASE..CURRENT_WF_SHA <- For prod release
     // CURRENT_WF_SHA..LAST_TO_BETA_SHA <- for maintaining draft
     if (deploymentStatusEvent.deployment.environment === BETA_ENV) {
-      core.info('🎊 Push to beta successful... Creating draft release...');
+      core.info(
+        `🎊 Push to ${BETA_ENV} successful... Let's see what's new...\n\n`
+      );
       const { data: diff } =
         await octokit.rest.repos.compareCommitsWithBasehead({
           owner: owner,
@@ -75,11 +66,13 @@ export async function manageReleases() {
           basehead: `${latestReleaseCommitish}...${currentDeploymentSha}`,
         });
 
-      core.info('prodRelease..currentDeploymentSha diff');
+      core.info('Comparing from latest release to...current deployment\n');
       core.info(`${latestReleaseCommitish}...${currentDeploymentSha}`);
-      diff.commits.forEach((commit) => {
-        core.info(`${commit.sha} : ${commit.commit.message}`);
-      });
+
+      // TODO: REMOVE THIS WHEN WE"RE DONE
+      for (const commit of diff.commits) {
+        core.info(JSON.stringify(commit, null, 2));
+      }
 
       let draftBody = '=== CUSTOM NONPROD BODY STARTS HERE ===\n';
       draftBody += await buildReleaseNotesBody(diff.commits);
@@ -94,9 +87,11 @@ export async function manageReleases() {
         prerelease: true,
         target_commitish: currentDeploymentSha,
       });
-      core.info(`Draft release created: ${draftRelease.data.html_url}`);
+      core.info(
+        `(dev/beta) Draft release created: ${draftRelease.data.html_url}`
+      );
     } else if (deploymentStatusEvent.deployment.environment === PROD_ENV) {
-      core.info('🎊 Push to prod successful... Creating release...');
+      core.info(`🎊 Push to ${PROD_ENV} successful... Creating release...`);
       const releaseName = new Date()
         .toISOString()
         .replace(/[-:]/g, '')
@@ -109,6 +104,12 @@ export async function manageReleases() {
           repo: repo,
           basehead: `${latestReleaseCommitish}...${currentDeploymentSha}`,
         });
+
+      core.info('Comparing from latest release to...current deployment\n');
+      core.info(`${latestReleaseCommitish}...${currentDeploymentSha}`);
+      for (const commit of diff.commits) {
+        core.info(JSON.stringify(commit, null, 2));
+      }
 
       let releaseBody = '=== CUSTOM PROD RELEASE BODY STARTS HERE ===\n';
       releaseBody += `Comparing: ${latestReleaseCommitish}..${currentDeploymentSha}\n`;
@@ -124,6 +125,8 @@ export async function manageReleases() {
         target_commitish: currentDeploymentSha,
       });
 
+      core.info(`============BEGIN DRAFT RELEASE ==================\n\n`);
+
       // LOL we have to get latest again
       const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
         owner: owner,
@@ -137,13 +140,29 @@ export async function manageReleases() {
         await octokit.rest.repos.compareCommitsWithBasehead({
           owner: owner,
           repo: repo,
-          basehead: `${lastSuccessfulDevDeploymentSha}...${latestReleaseResponse.data.target_commitish}`,
+          basehead: `${lastSuccessfulNonprodDeploymentSha}...${latestReleaseResponse.data.target_commitish}`,
         });
+
+      core.info(
+        'Comparing from lastSuccessfulNonprodDeploymentSha to...current latestReleaseResponse\n'
+      );
+      core.info(
+        `${lastSuccessfulNonprodDeploymentSha}...${latestReleaseResponse.data.target_commitish}`
+      );
+      for (const commit of diff.commits) {
+        core.info(JSON.stringify(commit, null, 2));
+      }
+
+      core.info('Comparing from latest release to...current deployment\n');
+      core.info(`${latestReleaseCommitish}...${currentDeploymentSha}`);
+      for (const commit of draftDiff.commits) {
+        core.info(JSON.stringify(commit, null, 2));
+      }
 
       core.info("🤔 Let's keep our draft up to date...");
       let draftBody =
         '=== CUSTOM NONPROD BODY STARTS HERE (Generated on Prod release) ===\n';
-      draftBody += `Comparing: ${lastSuccessfulDevDeploymentSha}..${latestReleaseResponse.data.target_commitish}\n`;
+      draftBody += `Comparing: ${lastSuccessfulNonprodDeploymentSha}..${latestReleaseResponse.data.target_commitish}\n`;
       draftBody += await buildReleaseNotesBody(draftDiff.commits);
       const { data: newDraft } = await octokit.rest.repos.createRelease({
         owner: owner,
@@ -248,46 +267,65 @@ async function getLastSuccessfulDeploymentSha(
   limit = 15
 ): Promise<string> {
   core.info(`🔍 Finding last successful deployment for ${env}...`);
-  const deployments = (
-    await octokit.rest.repos.listDeployments({
-      owner,
-      repo,
-      environment: env,
-      per_page: limit,
-    })
-  ).data.sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-  for (const deployment of deployments) {
-    core.info(`Checking deployment ${deployment.id}...`);
-    core.info(`Timestamp: ${deployment.created_at}`);
-    const { data: statuses } = await octokit.rest.repos.listDeploymentStatuses({
-      owner,
-      repo,
-      deployment_id: deployment.id,
-      per_page: 5, // Most deployments don't have tons of statuses
-    });
+  try {
+    const deployments = (
+      await octokit.rest.repos.listDeployments({
+        owner,
+        repo,
+        environment: env,
+        per_page: limit,
+      })
+    ).data.sort((a, b) => b.created_at.localeCompare(a.created_at));
 
-    const wasSuccessful = statuses.find((s) => s.state === 'success');
+    for (const deployment of deployments) {
+      core.info(`Checking deployment ${deployment.id}...`);
+      core.info(`Timestamp: ${deployment.created_at}`);
+      const { data: statuses } =
+        await octokit.rest.repos.listDeploymentStatuses({
+          owner,
+          repo,
+          deployment_id: deployment.id,
+          per_page: 5, // Most deployments don't have tons of statuses
+        });
 
-    statuses.find((s) => s.state === 'success');
+      const wasSuccessful = statuses.find((s) => s.state === 'success');
 
-    if (wasSuccessful) {
-      core.info(`🏁Found last successful ${deployment.environment} deployment: 
-        SHA: ${deployment.sha}
-        URL: ${deployment.url}
-        Environment: ${deployment.environment}
-        ID: ${deployment.id}
-        Deploy URL: ${wasSuccessful.deployment_url}
-        Log URL: ${wasSuccessful.log_url}
-        Target URL: ${wasSuccessful.target_url}
-        `);
-      return deployment.sha;
+      statuses.find((s) => s.state === 'success');
+
+      if (wasSuccessful) {
+        core.info(`🏁Found last successful ${deployment.environment} deployment: 
+          SHA: ${deployment.sha}
+          URL: ${deployment.url}
+          Environment: ${deployment.environment}
+          Log URL: ${wasSuccessful.log_url}
+          Target URL: ${wasSuccessful.target_url} // keep this
+          `);
+        return deployment.sha;
+      }
     }
+  } catch (err) {
+    core.setFailed(`No successful ${env} deployments found 😵💫`);
   }
+}
 
-  throw new Error(
-    `No successful dev deployment found in last ${limit} deployments for env ${env}.`
-  );
+async function getLatestReleaseCommitish(
+  owner: string,
+  repo: string,
+  fallbackSha: string = ''
+): Promise<string> {
+  try {
+    core.info(`🔍 Finding latest release commitish...`);
+    const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
+      owner: owner,
+      repo: repo,
+    });
+    core.info(`found: ${latestReleaseResponse.data.target_commitish}`);
+    return latestReleaseResponse.data.target_commitish;
+  } catch {
+    core.info(`No latest release found. Using fallback: ${fallbackSha}`);
+    return fallbackSha;
+  }
 }
 
 // async function buildReleaseNotes(
