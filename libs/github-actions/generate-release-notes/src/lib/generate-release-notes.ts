@@ -32,23 +32,33 @@ export async function manageReleases() {
   const deploymentStatusEvent = getEvent() as DeploymentStatusEvent;
   const currentDeploymentSha = deploymentStatusEvent.deployment.sha;
 
-  // 2. Get the last PROD release commitish -
-  // This will resolve to either a tag or a commit sha. Both work to compare against.
-  // Since this workflow is only run on 'success' deploy event,
-  // this should always be last successful prod deployment.
-  const latestRelease = await octokit.rest.repos.getLatestRelease({
-    owner: owner,
-    repo: repo,
-  });
-
-  const latestReleaseCommitish = latestRelease.data.target_commitish;
+  // 2. Get the last PROD release commitish
+  let latestReleaseCommitish: string;
+  try {
+    const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
+      owner: owner,
+      repo: repo,
+    });
+    latestReleaseCommitish = latestReleaseResponse.data.target_commitish;
+  } catch {
+    core.info('No latest release found. Using current deployment sha...');
+    latestReleaseCommitish = currentDeploymentSha;
+  }
 
   // 3. Find the last successful beta deployment sha (?)
-  const lastSuccessfulDevDeploymentSha = await getLastSuccessfulDeploymentSha(
-    owner,
-    repo,
-    BETA_ENV
-  );
+  let lastSuccessfulDevDeploymentSha: string;
+  try {
+    lastSuccessfulDevDeploymentSha = await getLastSuccessfulDeploymentSha(
+      owner,
+      repo,
+      BETA_ENV
+    );
+  } catch {
+    core.info(
+      'No last successful beta deployment found. Using current deployment sha...'
+    );
+    lastSuccessfulDevDeploymentSha = currentDeploymentSha;
+  }
 
   try {
     // LAST_RELEASE..CURRENT_WF_SHA <- For prod release
@@ -212,7 +222,7 @@ async function clearDraftRelease() {
       release_id: draftRelease.id,
     });
   } else {
-    core.info('😢No draft release found to remove!');
+    core.info('No draft release found to remove!');
   }
 }
 
@@ -241,7 +251,6 @@ async function getLastSuccessfulDeploymentSha(
       deployment_id: deployment.id,
       per_page: 5, // Most deployments don't have tons of statuses
     });
-    core.info(`Statuses: ${statuses.length}`);
 
     const wasSuccessful = statuses.find((s) => s.state === 'success');
 
