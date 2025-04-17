@@ -20,6 +20,7 @@ const [owner, repo] = GITHUB_REPOSITORY.split('/');
 
 // TODO:
 // a. Figure out how to set up the build commands better
+// b. figure out how to use actions/github-script to maybe skip npm install
 export async function manageReleases() {
   // 0. Clear the draft release. We're going to regenerate it to keep life simple
   await clearDraftRelease();
@@ -104,7 +105,7 @@ async function createRelease(
   name: string,
   draft = true
 ): Promise<void> {
-  core.info(`🎊 Push to ${env} successful... Creating release...`);
+  core.info(`🎊 Push to ${env} successful! Creating release...`);
   const { data: diff } = await octokit.rest.repos.compareCommitsWithBasehead({
     owner: owner,
     repo: repo,
@@ -221,8 +222,6 @@ async function getLastSuccessfulDeploymentSha(
     ).data.sort((a, b) => b.created_at.localeCompare(a.created_at));
 
     for (const deployment of deployments) {
-      core.info(`Checking deployment ${deployment.id}...`);
-      core.info(`Timestamp: ${deployment.created_at}`);
       const { data: statuses } =
         await octokit.rest.repos.listDeploymentStatuses({
           owner,
@@ -252,7 +251,7 @@ async function getLatestReleaseCommitish(
   fallbackSha = ''
 ): Promise<string> {
   try {
-    core.info(`🔍 Finding latest release commitish...`);
+    core.info(`🔍 Finding latest release...`);
     const { data: latestReleaseResponse } =
       await octokit.rest.repos.getLatestRelease({
         owner: owner,
