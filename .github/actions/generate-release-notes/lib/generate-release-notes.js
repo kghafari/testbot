@@ -11,12 +11,6 @@ const PROD_ENV = core.getInput('PROD_ENV');
 const DRAFT_NAME = core.getInput('DRAFT_NAME');
 const [owner, repo] = GITHUB_REPOSITORY.split('/');
 export async function manageReleases() {
-    // -1. Check inputs
-    // core.info(`GITHUB_REPOSITORY: ${GITHUB_REPOSITORY}`);
-    // core.info(`BETA_ENV: ${BETA_ENV}`);
-    // core.info(`PROD_ENV: ${PROD_ENV}`);
-    // core.info(`DRAFT_NAME: ${DRAFT_NAME}`);
-    // core.info(`Current ENV: ${process.env.GITHUB_ENV}`);
     // 0. Clear the draft release. We're going to regenerate it to keep life simple
     await clearDraftRelease();
     // 1. Get the current workflow deploy sha
@@ -27,116 +21,27 @@ export async function manageReleases() {
     // 3. Get the last PROD release commitish
     const latestReleaseCommitish = await getLatestReleaseCommitish(owner, repo, lastSuccessfulNonprodDeploymentSha);
     try {
+        // 4. On beta deploy create/update the rolling draft release
         if (deploymentStatusEvent.deployment.environment === BETA_ENV) {
-            await createRelease(BETA_ENV, latestReleaseCommitish, currentDeploymentSha, DRAFT_NAME, true);
-            // core.info(
-            //   `🎊 Push to ${BETA_ENV} successful... Let's see what's new...\n\n`
-            // );
-            // const { data: diff } =
-            //   await octokit.rest.repos.compareCommitsWithBasehead({
-            //     owner: owner,
-            //     repo: repo,
-            //     basehead: `${latestReleaseCommitish}...${currentDeploymentSha}`,
-            //   });
-            // core.info('Comparing from latest release to...current deployment\n');
-            // core.info(`${latestReleaseCommitish}...${currentDeploymentSha}`);
-            // // TODO: REMOVE THIS WHEN WE"RE DONE
-            // // for (const commit of diff.commits) {
-            // //   core.info(JSON.stringify(commit, null, 2));
-            // // }
-            // let draftBody = '=== CUSTOM NONPROD BODY STARTS HERE ===\n';
-            // draftBody += await buildReleaseNotesBody(diff.commits);
-            // const draftRelease = await octokit.rest.repos.createRelease({
-            //   owner: owner,
-            //   repo: repo,
-            //   tag_name: DRAFT_NAME,
-            //   name: DRAFT_NAME,
-            //   body: draftBody,
-            //   // generate_release_notes: true,
-            //   draft: true,
-            //   prerelease: true,
-            //   target_commitish: currentDeploymentSha,
-            // });
-            // core.info(
-            //   `(dev/beta) Draft release created: ${draftRelease.data.html_url}`
-            // );
+            await createRelease(deploymentStatusEvent, BETA_ENV, latestReleaseCommitish, currentDeploymentSha, DRAFT_NAME, true);
         }
+        // 5. On prod deploy create a release
         else if (deploymentStatusEvent.deployment.environment === PROD_ENV) {
-            await createRelease(PROD_ENV, latestReleaseCommitish, currentDeploymentSha, DRAFT_NAME, false);
-            // core.info(`🎊 Push to ${PROD_ENV} successful... Creating release...`);
-            // const releaseName = new Date()
-            //   .toISOString()
-            //   .replace(/[-:]/g, '')
-            //   .replace(/\.\d+Z$/, '')
-            //   .replace('T', '-');
-            // const { data: diff } =
-            //   await octokit.rest.repos.compareCommitsWithBasehead({
-            //     owner: owner,
-            //     repo: repo,
-            //     basehead: `${latestReleaseCommitish}...${currentDeploymentSha}`,
-            //   });
-            // core.info('Comparing from latest release to...current deployment\n');
-            // core.info(`${latestReleaseCommitish}...${currentDeploymentSha}`);
-            // // for (const commit of diff.commits) {
-            // //   core.info(JSON.stringify(commit, null, 2));
-            // // }
-            // let releaseBody = '=== CUSTOM PROD RELEASE BODY STARTS HERE ===\n';
-            // releaseBody += await buildReleaseNotesBody(diff.commits);
-            // await octokit.rest.repos.createRelease({
-            //   owner: owner,
-            //   repo: repo,
-            //   tag_name: releaseName,
-            //   name: releaseName,
-            //   body: releaseBody,
-            //   // generate_release_notes: true, // i dont htink this works
-            //   target_commitish: currentDeploymentSha,
-            // });
+            const releaseName = new Date()
+                .toISOString()
+                .replace(/[-:]/g, '')
+                .replace(/\.\d+Z$/, '')
+                .replace('T', '-');
+            await createRelease(deploymentStatusEvent, PROD_ENV, latestReleaseCommitish, currentDeploymentSha, releaseName, false);
+            // 6. Compare the latest release to the last successful nonprod deployment
+            // This keeps track of beta deployments that are not yet released to prod
             core.info(`============BEGIN DRAFT RELEASE ==================\n\n`);
             // Need to create a new draft release with the latest release commitish as the base
             const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
                 owner: owner,
                 repo: repo,
             });
-            await createRelease(BETA_ENV, latestReleaseResponse.data.target_commitish, currentDeploymentSha, DRAFT_NAME, true);
-            // // Create a new draft release with CURRENT_WF_SHA..LAST_TO_BETA_SHA <- for maintaining draft
-            // // If there's no commits, the body will be empty (for now). That's fine and expected.
-            // // egh idk if this still right uhhhh we want to look backwards from the last successful beta deployment sha to the current deployment sha
-            // const { data: draftDiff } =
-            //   await octokit.rest.repos.compareCommitsWithBasehead({
-            //     owner: owner,
-            //     repo: repo,
-            //     basehead: `${latestReleaseResponse.data.target_commitish}...${lastSuccessfulNonprodDeploymentSha}`,
-            //   });
-            // core.info(
-            //   'Comparing from latestReleaseResponse to...current lastSuccessfulNonprodDeploymentSha\n'
-            // );
-            // core.info(
-            //   `${latestReleaseResponse.data.target_commitish}...${lastSuccessfulNonprodDeploymentSha}`
-            // );
-            // // for (const commit of diff.commits) {
-            // //   core.info(JSON.stringify(commit, null, 2));
-            // // }
-            // core.info('Comparing from latest release to...current deployment\n');
-            // core.info(`${latestReleaseCommitish}...${currentDeploymentSha}`);
-            // for (const commit of draftDiff.commits) {
-            //   core.info(JSON.stringify(commit, null, 2));
-            // }
-            // core.info("🤔 Let's keep our draft up to date...");
-            // let draftBody =
-            //   '=== CUSTOM NONPROD BODY STARTS HERE (Generated on Prod release) ===\n';
-            // draftBody += `Comparing: ${lastSuccessfulNonprodDeploymentSha}..${latestReleaseResponse.data.target_commitish}\n`;
-            // draftBody += await buildReleaseNotesBody(draftDiff.commits);
-            // const { data: newDraft } = await octokit.rest.repos.createRelease({
-            //   owner: owner,
-            //   repo: repo,
-            //   tag_name: DRAFT_NAME,
-            //   name: DRAFT_NAME,
-            //   body: draftBody,
-            //   draft: true,
-            //   prerelease: true,
-            //   target_commitish: currentDeploymentSha,
-            // });
-            // core.info(`Draft release created: ${newDraft.html_url}`);
+            await createRelease(deploymentStatusEvent, BETA_ENV, latestReleaseResponse.data.target_commitish, lastSuccessfulNonprodDeploymentSha, DRAFT_NAME, true);
         }
     }
     catch (error) {
@@ -147,13 +52,8 @@ export async function manageReleases() {
     }
 }
 manageReleases();
-async function createRelease(env, from, to, name, draft = true) {
+async function createRelease(deploymentStatusEvent, env, from, to, name, draft = true) {
     core.info(`🎊 Push to ${env} successful... Creating release...`);
-    const releaseName = new Date()
-        .toISOString()
-        .replace(/[-:]/g, '')
-        .replace(/\.\d+Z$/, '')
-        .replace('T', '-');
     const { data: diff } = await octokit.rest.repos.compareCommitsWithBasehead({
         owner: owner,
         repo: repo,
@@ -162,6 +62,7 @@ async function createRelease(env, from, to, name, draft = true) {
     core.info('Comparing from latest release to...current deployment\n');
     core.info(`${from}...${to}`);
     let body = '=== CUSTOM RELEASE BODY STARTS HERE ===\n';
+    body += `## Last ${env} deployment from ${deploymentStatusEvent.workflow.html_url}\n`;
     body += await buildReleaseNotesBody(diff.commits);
     const { data: release } = await octokit.rest.repos.createRelease({
         owner: owner,
@@ -195,7 +96,6 @@ function configureOctokit() {
     });
     return octokit;
 }
-// DONE
 function getEvent() {
     const eventPath = process.env.GITHUB_EVENT_PATH;
     if (!eventPath) {
@@ -281,6 +181,7 @@ async function getLatestReleaseCommitish(owner, repo, fallbackSha = '') {
         return latestReleaseResponse.data.target_commitish;
     }
     catch {
+        // TODO: Better handling
         core.info(`No latest release found. Using fallback: ${fallbackSha}`);
         return fallbackSha;
     }
@@ -310,7 +211,6 @@ async function buildReleaseNotesBody(commits) {
                 const prAuthor = pr.user?.login || 'unknown';
                 core.info(`Found PR for commit ${commitSha} - ${prTitle} by @${prAuthor} in [${prNum}](https://github.com/${owner}/${repo}/pull/${prNum})\n`);
                 releaseNotesBody += `- # ${prTitle} by @${prAuthor} in [${prNum}](https://github.com/${owner}/${repo}/pull/${prNum})\n`;
-                // releaseNotesBody += `- [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum}): ${prTitle} (by @${prAuthor})\n`;
             }
             else {
                 core.warning(`⚠️ Failed to get PR for ${commitSha}`);
@@ -322,7 +222,6 @@ async function buildReleaseNotesBody(commits) {
             releaseNotesBody += `- ${shortSha}: ${commitMessage}\n`;
         }
     }
-    //core.info('📝Release notes body built!');
     return releaseNotesBody;
 }
 //# sourceMappingURL=generate-release-notes.js.map
