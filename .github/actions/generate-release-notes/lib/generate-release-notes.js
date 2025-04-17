@@ -10,6 +10,8 @@ const BETA_ENV = core.getInput('BETA_ENV');
 const PROD_ENV = core.getInput('PROD_ENV');
 const DRAFT_NAME = core.getInput('DRAFT_NAME');
 const [owner, repo] = GITHUB_REPOSITORY.split('/');
+// TODO:
+// a. Figure out how to set up the build commands better
 export async function manageReleases() {
     // 0. Clear the draft release. We're going to regenerate it to keep life simple
     await clearDraftRelease();
@@ -61,7 +63,10 @@ async function createRelease(deploymentStatusEvent, env, from, to, name, draft =
     });
     core.info('Comparing from latest release to...current deployment\n');
     core.info(`${from}...${to}`);
-    let body = '=== CUSTOM RELEASE BODY STARTS HERE ===\n';
+    // TODO: Clean this up
+    let body = `
+  [Full Changelog: ${from}...${to}](${diff.html_url})\n
+  diff html url: ${diff.html_url}\n diff urL: ${diff.diff_url}\n permalink url:${diff.permalink_url}`;
     body += `# [Last ${env} deployment](${deploymentStatusEvent.deployment_status.target_url}) \n`;
     body += await buildReleaseNotesBody(diff.commits);
     const { data: release } = await octokit.rest.repos.createRelease({
@@ -204,8 +209,8 @@ async function buildReleaseNotesBody(commits) {
                 const prNum = pr.number;
                 const prTitle = pr.title;
                 const prAuthor = pr.user?.login || 'unknown';
-                core.info(`Found PR for commit ${commitSha} - ${prTitle} by @${prAuthor} in [${prNum}](https://github.com/${owner}/${repo}/pull/${prNum})\n`);
-                releaseNotesBody += `- # ${prTitle} by @${prAuthor} in [${prNum}](https://github.com/${owner}/${repo}/pull/${prNum})\n`;
+                core.info(`Found PR for commit ${commitSha.slice(0, 7)} - ${prTitle} by @${prAuthor} in https://github.com/${owner}/${repo}/pull/${prNum}\n`);
+                releaseNotesBody += `- ${prTitle} by @${prAuthor} in [#${prNum}](https://github.com/${owner}/${repo}/pull/${prNum})\n`;
             }
             else {
                 core.warning(`⚠️ Failed to get PR for ${commitSha}`);
