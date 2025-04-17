@@ -17,6 +17,7 @@ jobs:
     environment: dev
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: test action
         uses: kghafari/my-actions/src/action-one@v1
         with:
