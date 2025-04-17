@@ -61,11 +61,10 @@ async function createRelease(deploymentStatusEvent, env, from, to, name, draft =
         repo: repo,
         basehead: `${from}...${to}`,
     });
-    core.info('Comparing from latest release to...current deployment\n');
-    core.info(`${from}...${to}`);
+    core.info(`Changes: ${diff.html_url}`);
     // TODO: Clean this up
-    let body = `[Full Changelog: ${diff.html_url}\n`;
-    body += `# [Last ${env} deployment](${deploymentStatusEvent.deployment_status.target_url}) \n`;
+    let body = `# [Last ${env} deployment](${deploymentStatusEvent.deployment_status.target_url}) \n`;
+    body += `**Full Changelog: ${diff.html_url}**\n`;
     body += await buildReleaseNotesBody(diff.commits);
     const { data: release } = await octokit.rest.repos.createRelease({
         owner: owner,
@@ -195,7 +194,6 @@ async function buildReleaseNotesBody(commits) {
         const commitSha = commit.sha;
         const shortSha = commitSha.slice(0, 7);
         const commitMessage = commit.commit.message.split('\n')[0];
-        core.info(`checking ${shortSha} for PR...`);
         try {
             const { data: prResponse } = await octokit.rest.repos.listPullRequestsAssociatedWithCommit({
                 owner,
@@ -216,6 +214,7 @@ async function buildReleaseNotesBody(commits) {
             }
         }
         catch (err) {
+            //TODO: Wrap the try/catch better
             core.warning(`⚠️ Failed to get PR for ${commitSha}: ${err}`);
             releaseNotesBody += `- ${shortSha}: ${commitMessage}\n`;
         }
