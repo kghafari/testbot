@@ -9,6 +9,6 @@ import { environment } from '../../environments/environment';
   styleUrl: './hello.component.scss',
 })
 export class HelloComponent {
-  testData = environment.testValue;
+  testdata = environment.testValue;
   env = environment.environmentName;
 }
