@@ -64,9 +64,7 @@ async function createRelease(deploymentStatusEvent, env, from, to, name, draft =
     core.info('Comparing from latest release to...current deployment\n');
     core.info(`${from}...${to}`);
     // TODO: Clean this up
-    let body = `
-  [Full Changelog: ${from}...${to}](${diff.html_url})\n
-  diff html url: ${diff.html_url}\n diff urL: ${diff.diff_url}\n permalink url:${diff.permalink_url}`;
+    let body = `[Full Changelog: ${diff.html_url}\n`;
     body += `# [Last ${env} deployment](${deploymentStatusEvent.deployment_status.target_url}) \n`;
     body += await buildReleaseNotesBody(diff.commits);
     const { data: release } = await octokit.rest.repos.createRelease({
