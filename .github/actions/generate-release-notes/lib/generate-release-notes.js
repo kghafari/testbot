@@ -62,7 +62,7 @@ async function createRelease(deploymentStatusEvent, env, from, to, name, draft =
     core.info('Comparing from latest release to...current deployment\n');
     core.info(`${from}...${to}`);
     let body = '=== CUSTOM RELEASE BODY STARTS HERE ===\n';
-    body += `## Last ${env} deployment from ${deploymentStatusEvent.workflow.html_url}\n`;
+    body += `# [Last ${env} deployment](${deploymentStatusEvent.deployment_status.target_url}) \n`;
     body += await buildReleaseNotesBody(diff.commits);
     const { data: release } = await octokit.rest.repos.createRelease({
         owner: owner,
@@ -131,6 +131,7 @@ async function clearDraftRelease() {
         });
     }
     else {
+        // It's ok to fail here, we just want to remove the old draft release if it exists
         core.info('No draft release found to remove!');
     }
 }
@@ -153,32 +154,26 @@ async function getLastSuccessfulDeploymentSha(owner, repo, env, limit = 15) {
                 per_page: 5, // Most deployments don't have tons of statuses
             });
             const wasSuccessful = statuses.find((s) => s.state === 'success');
-            statuses.find((s) => s.state === 'success');
             if (wasSuccessful) {
-                core.info(`🏁Found last successful ${deployment.environment} deployment: 
-          SHA: ${deployment.sha}
-          URL: ${deployment.url}
-          Environment: ${deployment.environment}
-          Log URL: ${wasSuccessful.log_url}
-          Target URL: ${wasSuccessful.target_url} // keep this
-          `);
+                core.info(`🏁Found last successful ${deployment.environment} deployment: ${wasSuccessful.target_url}`);
                 return deployment.sha;
             }
         }
     }
     catch (err) {
-        core.setFailed(`No successful ${env} deployments found 😵💫`);
+        core.warning(`No successful ${env} deployments found 😵💫`);
+        core.setFailed(err.message);
     }
 }
 async function getLatestReleaseCommitish(owner, repo, fallbackSha = '') {
     try {
         core.info(`🔍 Finding latest release commitish...`);
-        const latestReleaseResponse = await octokit.rest.repos.getLatestRelease({
+        const { data: latestReleaseResponse } = await octokit.rest.repos.getLatestRelease({
             owner: owner,
             repo: repo,
         });
-        core.info(`found: ${latestReleaseResponse.data.target_commitish}`);
-        return latestReleaseResponse.data.target_commitish;
+        core.info(`found ${latestReleaseResponse.target_commitish.slice(0, 7)}: ${latestReleaseResponse.html_url}`);
+        return latestReleaseResponse.target_commitish;
     }
     catch {
         // TODO: Better handling
