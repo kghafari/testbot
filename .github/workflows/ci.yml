@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: test action
-        uses: kghafari/my-actions/src/action-one@v1
+        uses: kghafari/my-actions/action-one@v1
         with:
           name: 'kyle'
       - uses: actions/setup-node@v4
