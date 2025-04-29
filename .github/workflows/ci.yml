@@ -7,7 +7,7 @@ on:
     # tags:
     #   - 'v*.*.*'
 env:
-  JSON: ${{ toJson(github.event) }}
+  JSON: ${{ toJson(github) }}
 
 permissions:
   actions: read
