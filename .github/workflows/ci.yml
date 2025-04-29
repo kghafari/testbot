@@ -13,11 +13,17 @@ permissions:
   contents: read
   issues: write
 
+env:
+  JSON: ${{ toJson(github) }}
+
 jobs:
   dev:
     environment: dev
     runs-on: ubuntu-latest
     steps:
+      - name: json dump
+        run: |
+          echo "$JSON"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
