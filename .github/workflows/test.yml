@@ -1,0 +1,23 @@
+name: Test Workflow
+run-name: Test Workflow for ${{ github.event.deployment.environment }} - ${{ github.event.deployment_status.state }}
+
+on:
+  deployment_status:
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    if: >
+      github.event.deployment_status.state == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - run: |
+          echo "Running tests..."
+          echo "GitHub Event Object:"
+          echo "${{ toJson(github.event) }}"
+          echo '### Hello summary! 🚀' >> $GITHUB_STEP_SUMMARY
