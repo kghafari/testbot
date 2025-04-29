@@ -11,13 +11,11 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    if: >
-      github.event.deployment_status.state == 'success'
     steps:
       - name: test action
         uses: kghafari/my-actions/src/playwright@v1
         with:
-          workflow-url: '${{ github.event.workflow_run }}'
+          workflow-run: '${{ github.event.workflow_run }}'
     #   - run: |
     #       echo "$JSON"
     #   - run: |
