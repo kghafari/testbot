@@ -1,0 +1,21 @@
+name: Test Workflow
+run-name: Test On wf dispatch Workflow"
+
+on:
+  workflow_dispatch:
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  JSON: ${{ toJson(github.event) }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "$JSON"
+      - run: |
+          echo "Begin 'other jobs'" >> $GITHUB_STEP_SUMMARY
+          echo "GITHUB_SHA: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "GITHUB_REPOSITORY: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "GITHUB_REF: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
