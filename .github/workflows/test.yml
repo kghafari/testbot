@@ -14,15 +14,10 @@ jobs:
     if: >
       github.event.deployment_status.state == 'success'
     steps:
-      - name: Set outputs
-        id: vars
-        run: echo "short_sha=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
-
       - run: |
-          echo "Triggered from: [${{ steps.vars.outputs.short_sha }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
-
-      - name: Other Jobs
-        run: |
+          echo "$JSON"
+      - run: |
+          echo "Triggered from: [${{ github.event.deployment.sha }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
           echo "Begin 'other jobs'" >> $GITHUB_STEP_SUMMARY
           echo "GITHUB_SHA: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "GITHUB_REPOSITORY: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
