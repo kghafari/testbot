@@ -6,8 +6,6 @@ on:
       - main
     # tags:
     #   - 'v*.*.*'
-env:
-  JSON: ${{ toJson(github) }}
 
 permissions:
   actions: read
@@ -19,13 +17,7 @@ jobs:
     environment: dev
     runs-on: ubuntu-latest
     steps:
-      - name: Print event json
-        run: echo "$JSON"
       - uses: actions/checkout@v4
-      # - name: test action
-      #   uses: kghafari/my-actions/src/playwright@v1
-      #   with:
-      #     workflow-url: '${{ github.event.workflow_run.html_url }}'
       - uses: actions/setup-node@v4
         with:
           node-version: 20
