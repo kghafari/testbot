@@ -14,12 +14,16 @@ jobs:
     if: >
       github.event.deployment_status.state == 'success'
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Set outputs
+        id: vars
+        run: echo "short_sha=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
 
       - run: |
-          echo "$JSON"
-          echo "==========================="
-          echo "Deployment Status Environment URL:"
-          echo "Environment URL: ${{ github.event.deployment_status.environment_url }}"
-          echo "Triggered from: [${{ github.event.workflow_run.html_url }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
+          echo "Triggered from: [${{ steps.vars.outputs.short_sha }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
+
+      - name: Other Jobs
+        run: |
+          echo "Begin 'other jobs'" >> $GITHUB_STEP_SUMMARY
+          echo "GITHUB_SHA: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "GITHUB_REPOSITORY: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+          echo "GITHUB_REF: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
