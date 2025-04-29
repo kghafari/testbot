@@ -18,6 +18,7 @@ jobs:
           echo "$JSON"
       - run: |
           echo "Triggered from: [${{ github.event.deployment.sha }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
+          echo "Triggered from: [${{ github.event.workflow_run.name }} / #${{github.event.workflow_run.run_number}} / ${{ github.event.workflow_run.id }} ](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
           echo "Begin 'other jobs'" >> $GITHUB_STEP_SUMMARY
           echo "GITHUB_SHA: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "GITHUB_REPOSITORY: ${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
