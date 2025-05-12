@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: deploy
         run: echo "This is not a hotfix branch, so we will proceed with the normal deployment."
+      - name: simulated deployment
+        run: echo "'Deploying' from ${{github.event.base_ref}}
       - name: json dump
         run: |
           echo "$JSON"
@@ -32,6 +34,8 @@ jobs:
     steps:
       - name: deploy
         run: echo "This is a hotfix branch, so we will proceed with the hotfix deployment."
+      - name: simulated deployment
+        run: echo "'Deploying' hotfix from ${{github.event.base_ref}}
       - name: json dump
         run: |
           echo "$JSON"
