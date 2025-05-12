@@ -69,34 +69,4 @@ jobs:
       - name: Upload to S3 Prod
         run: |
           aws s3 sync ./dist/apps/testbot-app/browser s3://testbot.win
-  # libs:
-  #   # only does the release notes lib for now
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Setup Node
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 20
-  #     - run: npm ci --legacy-peer-deps
-  #     # - name: Check if GitHub Action was affected
-  #     #   id: affected
-  #     #   run: |
-  #     #     npx nx show projects --affected --base=origin/main --head=HEAD > affected.txt
-  #     #     cat affected.txt
-  #     #     echo "affected=$(grep github-actions-generate-release-notes affected.txt)" >> $GITHUB_OUTPUT
-
-  #     # - name: Build release notes lib
-  #     #   if: steps.affected.outputs.affected != ''
-
-  #     # building every time for now
-  #     - name: Build release notes lib
-  #       run: npx nx run generate-release-notes:build:action
-
-  #     # - name: List generated action files
-  #     #   run: ls -R .github/actions/generate-release-notes
-
-  #     # - name: Run local action
-  #     #   uses: ./.github/actions/generate-release-notes
-  #     #   env:
-  #     #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  
