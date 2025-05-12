@@ -1,0 +1,37 @@
+name: ✅ Main Deployment Workflow
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+env:
+  JSON: ${{ toJson(github) }}
+
+jobs:
+  deploy:
+    if: startsWith(github.head_ref, 'hotfix-') == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: deploy
+        run: echo "This is not a hotfix branch, so we will proceed with the normal deployment."
+      - name: json dump
+        run: |
+          echo "$JSON"
+  hotfix:
+    if: startsWith(github.head_ref, 'hotfix-') == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: deploy
+        run: echo "This is a hotfix branch, so we will proceed with the hotfix deployment."
+      - name: json dump
+        run: |
+          echo "$JSON"
