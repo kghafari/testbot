@@ -1,4 +1,4 @@
-name: ✅ Main Deployment Workflow
+name: One or the other
 
 on:
   pull_request:
