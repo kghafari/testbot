@@ -18,7 +18,7 @@ env:
 
 jobs:
   deploy:
-    if: startsWith(github.head_ref, 'hotfix-') == false
+    if: contains(github.event.base_ref, '/hotfix-') == false
     runs-on: ubuntu-latest
     steps:
       - name: deploy
@@ -27,7 +27,7 @@ jobs:
         run: |
           echo "$JSON"
   hotfix:
-    if: startsWith(github.head_ref, 'hotfix-') == true
+    if: contains(github.event.base_ref, '/hotfix-') == true
     runs-on: ubuntu-latest
     steps:
       - name: deploy
