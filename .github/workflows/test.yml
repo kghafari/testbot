@@ -12,23 +12,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: print gh
-        run: echo "${{ github }}"
-      - name: print gh json
-        run: echo "${{ toJson(github) }}" 
-      - name: print event
-        run: echo "${{ github.event }}"
-      - name: print event json
-        run: echo "${{ toJson(github.event) }}" 
-      - name: print wf
-        run: echo "${{ github.event.workflow_run }}"
-      - name: print wf json
-        run: echo "${{ toJson(github.event.workflow_run) }}"        
-      # - name: test action
-      #   uses: kghafari/my-actions/src/playwright@v1
-      #   with:
-      #     workflow-run: '${{ github.event.workflow_run }}'
-    #   - run: |
-    #       echo "$JSON"
-    #   - run: |
-    #       echo "Triggered from: [${{ github.event.workflow_run.name }} - #${{github.event.workflow_run.run_number}} / ${{ github.event.workflow_run.id }} ](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: test action
+        uses: kghafari/my-actions/src/playwright@main
+        with:
+          base_url: google.com
+          environment: dev
+          workflow_run_url: '${{ github.repository }}/actions/runs/${{ github.run_id }}'
