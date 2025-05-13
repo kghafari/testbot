@@ -12,11 +12,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
       - name: test action
-        uses: kghafari/my-actions/src/playwright@main
+        uses: kghafari/my-actions/src/action-three@main
         with:
-          base_url: google.com
-          environment: dev
-          workflow_run_url: '${{ github.repository }}/actions/runs/${{ github.run_id }}'
+          test-value: 'my test value'
+        # uses: kghafari/my-actions/src/playwright@main
+        # with:
+        #   base_url: google.com
+        #   env: dev
+        #   workflow_run_url: '${{ github.repository }}/actions/runs/${{ github.run_id }}'
