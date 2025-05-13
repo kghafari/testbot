@@ -32,3 +32,12 @@ jobs:
         with:
           # parameters for the action
           name: 'from testbot'
+  env-check-tester:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: kghafari/my-actions/src/env-check@main
+        with:
+          github_repo: ${{ github.event.repository.full_name }}
+          environments_to_check: 'dev,prod'
+          # parameters for the action
