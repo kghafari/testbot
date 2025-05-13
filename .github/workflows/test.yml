@@ -14,8 +14,7 @@ jobs:
     uses: kghafari/my-actions/.github/workflows/action-three.yml@main
     with:
       test-value: 'my test value'
-        # uses: kghafari/my-actions/src/playwright@main
-        # with:
-        #   base_url: google.com
-        #   env: dev
-        #   workflow_run_url: '${{ github.repository }}/actions/runs/${{ github.run_id }}'
+  script-tester:
+    uses: kghafari/my-actions/src/action-one/action.yml@main
+    with:
+      name: 'my test name'
