@@ -1,4 +1,4 @@
-name:  'hello?? My Test Workflow'
+name: 'hello?? My Test Workflow'
 
 on:
   push:
@@ -10,11 +10,11 @@ env:
   JSON: ${{ toJson(github.event) }}
 
 jobs:
-  tester:
-    uses: kghafari/my-actions/.github/workflows/action-three.yml@main
-    with:
-      test-value: 'my test value'
+  # tester:
+  #   uses: kghafari/my-actions/.github/workflows/action-three.yml@main
+  #   with:
+  #     test-value: 'my test value'
   script-tester:
-    uses: kghafari/my-actions/.github/workflows/action-one.yml@main
+    uses: kghafari/my-actions/.github/workflows/action-one-workflow.yml@main
     with:
-      name: 'my test name!'
+      name: 'from testbot!'
