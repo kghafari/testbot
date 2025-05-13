@@ -13,6 +13,10 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: print wf
+        run: echo "${{ github.event.workflow_run }}"
+      - name: print wf json
+        run: echo "${{ toJson(github.event.workflow_run) }}"        
       - name: test action
         uses: kghafari/my-actions/src/playwright@v1
         with:
