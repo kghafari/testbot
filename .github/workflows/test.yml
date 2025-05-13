@@ -17,4 +17,4 @@ jobs:
   script-tester:
     uses: kghafari/my-actions/.github/workflows/action-one-workflow.yml@main
     with:
-      name: 'from testbot!'
+      name: 'from testbot'
