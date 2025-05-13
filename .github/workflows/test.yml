@@ -15,6 +15,6 @@ jobs:
     with:
       test-value: 'my test value'
   script-tester:
-    uses: kghafari/my-actions/src/action-one/.github/action.yml@main
+    uses: kghafari/my-actions/src/action-one/action@main
     with:
       name: 'my test name!'
