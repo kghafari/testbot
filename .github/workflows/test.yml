@@ -11,14 +11,10 @@ env:
   JSON: ${{ toJson(github.event) }}
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-
-      - name: test action
-        uses: kghafari/my-actions/src/action-three@main
-        with:
-          test-value: 'my test value'
+  tester:
+    uses: kghafari/my-actions/src/action-three@main
+    with:
+      test-value: 'my test value'
         # uses: kghafari/my-actions/src/playwright@main
         # with:
         #   base_url: google.com
