@@ -3,6 +3,11 @@ run-name: Test Workflow for ${{ github.event.deployment.environment }} - ${{ git
 
 on:
   workflow_dispatch:
+    inputs:
+      test_value:
+        description: 'Test value'
+        required: true
+        default: 'my test value'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -12,6 +17,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+
       - name: test action
         uses: kghafari/my-actions/src/action-three@main
         with:
