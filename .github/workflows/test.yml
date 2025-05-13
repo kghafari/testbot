@@ -12,7 +12,7 @@ env:
 
 jobs:
   tester:
-    uses: kghafari/my-actions/src/action-three@main
+    uses: kghafari/my-actions/.github/action-three@main
     with:
       test-value: 'my test value'
         # uses: kghafari/my-actions/src/playwright@main
