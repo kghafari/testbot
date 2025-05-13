@@ -1,5 +1,4 @@
-name:  My Test Workflow
-run-name: Test Workflow for ${{ github.event.deployment.environment }} - ${{ github.event.deployment_status.state }}
+name:  'hello?? My Test Workflow'
 
 on:
   push:
@@ -12,7 +11,7 @@ env:
 
 jobs:
   tester:
-    uses: kghafari/my-actions/.github/action-three@main
+    uses: kghafari/my-actions/.github/workflows/action-three@main
     with:
       test-value: 'my test value'
         # uses: kghafari/my-actions/src/playwright@main
