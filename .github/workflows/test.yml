@@ -3,6 +3,7 @@ run-name: Test Workflow for ${{ github.event.deployment.environment }} - ${{ git
 
 on:
   deployment_status:
+  workflow_dispatch:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -13,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: test action
-        uses: kghafari/my-actions/src/playwright@v1
+        uses: kghafari/my-actions/src/playwright
         with:
           workflow-run: '${{ github.event.workflow_run }}'
     #   - run: |
