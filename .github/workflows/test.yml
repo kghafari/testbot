@@ -17,8 +17,8 @@ jobs:
   script-tester:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
-      - uses: kghafari/my-actions/.github/workflows/action-one-workflow.yml@main
+      - uses: actions/checkout@v4
+      - uses: kghafari/my-actions/src/action-one@main
         with:
+          # parameters for the action
           name: 'from testbot'
