@@ -1,4 +1,4 @@
-name: Test Workflow
+name:  My Test Workflow
 run-name: Test Workflow for ${{ github.event.deployment.environment }} - ${{ github.event.deployment_status.state }}
 
 on:
@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: test action
-        uses: kghafari/my-actions/src/playwright
+        uses: kghafari/my-actions/playwright@v1
         with:
           workflow-run: '${{ github.event.workflow_run }}'
     #   - run: |
