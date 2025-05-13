@@ -12,6 +12,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: print gh
+        run: echo "${{ github }}"
+      - name: print gh json
+        run: echo "${{ toJson(github) }}" 
+      - name: print event
+        run: echo "${{ github.event }}"
+      - name: print event json
+        run: echo "${{ toJson(github.event) }}" 
       - name: print wf
         run: echo "${{ github.event.workflow_run }}"
       - name: print wf json
