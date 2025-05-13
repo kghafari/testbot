@@ -1,6 +1,7 @@
 name: 'hello?? My Test Workflow'
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
