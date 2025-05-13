@@ -10,10 +10,20 @@ env:
   JSON: ${{ toJson(github.event) }}
 
 jobs:
-  # tester:
-  #   uses: kghafari/my-actions/.github/workflows/action-three.yml@main
-  #   with:
-  #     test-value: 'my test value'
+  playwright-tester:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Playwright tests
+        uses: kghafari/my-actions/src/playwright@main
+        with:
+          # parameters for the action
+          base_url: 'https://example.com'
+          env: dev
+          workflow_run_url: ${{ github.event.workflow_run.html_url }}
+
   script-tester:
     runs-on: ubuntu-latest
     steps:
