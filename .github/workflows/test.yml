@@ -2,12 +2,9 @@ name:  My Test Workflow
 run-name: Test Workflow for ${{ github.event.deployment.environment }} - ${{ github.event.deployment_status.state }}
 
 on:
-  workflow_dispatch:
-    inputs:
-      test_value:
-        description: 'Test value'
-        required: true
-        default: 'my test value'
+  push:
+    branches:
+      - main
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
