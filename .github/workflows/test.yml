@@ -5,34 +5,37 @@ on:
   push:
     branches:
       - main
+permissions:
+  actions: write
+  contents: write
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   JSON: ${{ toJson(github.event) }}
 
 jobs:
-  playwright-tester:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # playwright-tester:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Run Playwright tests
-        uses: kghafari/my-actions/src/playwright@main
-        with:
-          # parameters for the action
-          base_url: 'https://example.com'
-          run_environment: dev
-          workflow_run_url: ${{ github.event.workflow_run.html_url }}
+  #     - name: Run Playwright tests
+  #       uses: kghafari/my-actions/src/playwright@main
+  #       with:
+  #         # parameters for the action
+  #         base_url: 'https://example.com'
+  #         run_environment: dev
+  #         workflow_run_url: ${{ github.event.workflow_run.html_url }}
 
-  script-tester:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: kghafari/my-actions/src/action-one@main
-        with:
-          # parameters for the action
-          name: 'from testbot'
+  # script-tester:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: kghafari/my-actions/src/action-one@main
+  #       with:
+  #         # parameters for the action
+  #         name: 'from testbot'
   env-check-tester:
     runs-on: ubuntu-latest
     steps:
