@@ -48,6 +48,7 @@ jobs:
 
   staging:
     environment: staging
+    needs: dev
     runs-on: ubuntu-latest
     steps:
       - name: json dump
