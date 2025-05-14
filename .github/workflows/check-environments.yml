@@ -1,0 +1,20 @@
+name: '2. 👀 Check Deploy Environments'
+description: 'Check the deploy environments for the testbot app'
+
+on:
+  workflow_dispatch:
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  JSON: ${{ toJson(github.event) }}
+
+jobs:
+  check-deployments:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: kghafari/my-actions/src/env-check@main
+        with:
+          github_repo: ${{ github.event.repository.full_name }}
+          environments_to_check: 'dev,staging,prod'
+          # parameters for the action

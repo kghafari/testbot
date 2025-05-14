@@ -1,4 +1,4 @@
-name: ✅ Main Deployment Workflow
+name: 1. ✅ Main Deployment Workflow
 
 on:
   push:
