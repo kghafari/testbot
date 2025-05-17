@@ -1,9 +1,8 @@
 name: 2.🅿 Prod Release
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  release:
+    types: [published]
 
 permissions:
   actions: read
