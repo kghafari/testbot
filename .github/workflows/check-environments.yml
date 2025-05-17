@@ -1,4 +1,4 @@
-name: '2. 👀 Check Deploy Environments'
+name: '3. 👀 Check Deploy Environments'
 description: 'Check the deploy environments for the testbot app'
 
 on:
